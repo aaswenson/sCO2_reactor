@@ -1,12 +1,14 @@
-MCNP6 base input file for leakage study. 
+from string import Template
+base_string = Template("""\
+MCNP6 leakage study radius:${core_radius} cm, height:${core_height} cm. 
 c Cell Card
-1 1 -6.25 -1 -2 3 imp:n=1  $ cylindrical reactor
-2 0 2:-3:(1 -2 3) imp:n=0  $ outside world
+1 1 -6.25 -1 -2 3 imp:n=1  ${comm} cylindrical reactor
+2 0 2:-3:(1 -2 3) imp:n=0  ${comm} outside world
  
 c Surface Card
-1 CZ 50
-2 PZ 25
-3 PZ -25
+1${bc} CZ ${core_radius}
+2${bc} PZ ${half_core_height}
+3${bc} PZ -${half_core_height}
 
 c Data Card
 m1
@@ -40,7 +42,7 @@ m1
      28064 -3.8318e-05
      92235 -4.7189e-02
      92238 -7.3929e-01
-kcode 5000 1 30 60
+kcode ${n_per_cycle} 1 ${non_active_cycles} ${total_cycles}
 ksrc 0 0 0
      1 1 1
      -1 -1 -1 
@@ -49,3 +51,5 @@ ksrc 0 0 0
      1 1 -1
 mode n
 print
+""")
+
