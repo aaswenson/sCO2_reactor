@@ -4,6 +4,16 @@ from pyne import mcnp
 import numpy as np
 import math
 
+def write_hpc_submit(radius, height, bc, file, cores):
+    
+    string = "leakage_{0}_{1}_{2}".format(radius, height, bc)
+
+    entry = "mpirun -np {0} /home/adavis23/mcnp/mcnp6.mpi i= {1}.i \
+o= {1}.o x=/home/aaswenson/MCNP_DATA/xdata/xsdir\n"\
+            .format(cores, string)
+
+    file.write(entry)
+
 def write_input(radius, height, mat_card, kcode_params, bc):
     bc_options = {'refl' : '+',
                   'bare' : ''}
@@ -70,13 +80,16 @@ def homog_fuel_comp(r, PD, enrich):
     return homogeneous_fuel.mcnp()
 
 def main():
+    z = 50 # height of the core
+    file = open('./inputs/leakage_submit.sh','w')
     # get homogeneous fuel for r=1cm, PD=1.2 90% U235
     fuel_string = homog_fuel_comp(1, 1.2, 0.9)
     for radius in range(10,110,10):
-        write_input(radius, 50, fuel_string, (15000, 15, 65), 'bare')
-        write_input(radius, 50, fuel_string, (15000, 15, 65), 'refl')
-
+        write_hpc_submit(radius, z, 'bare', file, 160)
+        write_hpc_submit(radius, z, 'refl', file, 160)
+        write_input(radius, z, fuel_string, (15000, 25, 75), 'bare')
+        write_input(radius, z, fuel_string, (15000, 25, 75), 'refl')
+    file.close()
 
 if __name__ == "__main__":
     main()
-    homog_fuel_comp(1,1.1,0.9)
