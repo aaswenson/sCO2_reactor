@@ -5,16 +5,20 @@ import numpy as np
 import math
 
 def write_hpc_submit(radius, height, bc, file, cores):
-    
+    """ Write the HPC submit file entries for every MCNP6 input file.
+    """
     string = "leakage_{0}_{1}_{2}".format(radius, height, bc)
-
     entry = "mpirun -np {0} /home/adavis23/mcnp/mcnp6.mpi i= {1}.i \
 o= {1}.o x=/home/aaswenson/MCNP_DATA/xdata/xsdir\n"\
             .format(cores, string)
-
     file.write(entry)
 
 def write_input(radius, height, mat_card, kcode_params, bc):
+    """ Write MCNP6 input files.
+    This function writes the MCNP6 input files for the leakage experiment using
+    the template input string. It writes a bare and reflected core input file
+    for each core radius.
+    """
     bc_options = {'refl' : '+',
                   'bare' : ''}
     templ = base_string
