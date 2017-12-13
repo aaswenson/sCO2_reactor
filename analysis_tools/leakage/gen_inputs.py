@@ -75,6 +75,8 @@ def homog_fuel_comp(r, PD, enrich):
 
     # combine three fuel constituents into mass-weighted mixture
     homogeneous_fuel = fuel + coolant + cermet_matrix
+    homogeneous_fuel = homogeneous_fuel.expand_elements()
+    del homogeneous_fuel['8018']
     homogeneous_fuel.metadata['mat_number'] = 1
 
     return homogeneous_fuel.mcnp()
@@ -84,11 +86,12 @@ def main():
     file = open('./inputs/leakage_submit.sh','w')
     # get homogeneous fuel for r=1cm, PD=1.2 90% U235
     fuel_string = homog_fuel_comp(1, 1.2, 0.9)
+    # write the inputs
     for radius in range(10,110,10):
         write_hpc_submit(radius, z, 'bare', file, 160)
         write_hpc_submit(radius, z, 'refl', file, 160)
-        write_input(radius, z, fuel_string, (15000, 25, 75), 'bare')
-        write_input(radius, z, fuel_string, (15000, 25, 75), 'refl')
+        write_input(radius, z, fuel_string, (150000, 35, 150), 'bare')
+        write_input(radius, z, fuel_string, (150000, 35, 150), 'refl')
     file.close()
 
 if __name__ == "__main__":
