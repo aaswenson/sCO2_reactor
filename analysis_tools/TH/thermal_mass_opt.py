@@ -21,6 +21,7 @@ def sweep_configs(D, PD, z, c, N, key):
     # create parameter mesh
     D, PD = np.meshgrid(D, PD)
     M = np.empty([N,N])
+    min_mass = 1e9
     # sweep through parameter space, calculate min mass
     for i in range(N):
         for j in range(N):
@@ -28,7 +29,9 @@ def sweep_configs(D, PD, z, c, N, key):
             flowdata.Iterate()
             flowdata.calc_reactor_mass()
             M[i][j] = flowdata.__dict__[key]
-
+            if flowdata.mass < min_mass:
+                min_mass = flowdata.mass
+    print(min_mass)
     return D, PD, M
 
 def plot_mass(D, PD, M, key):

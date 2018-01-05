@@ -23,15 +23,15 @@ class FlowIteration:
     # heat transfer and non-dimensional coefficients
     h_bar = 0; Re = 0; Nu = 0; Pr = 0
     # flow parameters
-    G_dot = 0; D_e = 0; v = 0; dp = 0
+    G_dot = 0; D_e = 0; v = 0;
     # heat generation
     q_bar = 0; q_per_channel = 0; q_therm_check = 0
     
-    def __init__(self, diameter, PD, c, L, guess):
+    def __init__(self, diameter, PD, c, guess):
         self.r_channel = diameter / 2.0
+        self.D_e = diameter
         self.pitch = self.r_channel * PD * 2
         self.c = c
-        self.L = L
         self.guess = guess
         self.iterations = 0
 
@@ -39,11 +39,7 @@ class FlowIteration:
         """Test for solution convergence and pressure limit.
         """
         if self.N_channels == self.guess:
-            if self.dp < dp_allowed:
-                return True
-            else:
-                self.N_channels += 1
-                return False
+            return True
         else:
             return False
     
@@ -53,10 +49,8 @@ class FlowIteration:
                    self.N_channels (int) number of fuel elements
         Returns: G_dot (float): coolant mass flux
         """
-        flow_area = math.pi *self.r_channel**2 * self.guess 
-        flow_perim = math.pi * self.r_channel * 2.0 * self.guess
+        flow_area = math.pi * self.r_channel**2 * self.guess 
         self.G_dot = m_dot / flow_area
-        self.D_e = 4.0 * flow_area / flow_perim
         self.v = self.G_dot / rho_cool
 
     def calc_nondim(self):
@@ -72,7 +66,6 @@ class FlowIteration:
         Arguments: 
         Returns: h_bar (float) average heat transfer coefficient.
         """
-        
         self.h_bar = self.Nu * k_cool / self.D_e
 
     def get_q_bar(self, Q_therm):
@@ -100,33 +93,35 @@ class FlowIteration:
         self.q_per_channel = 2 * q_trip_max * A_fuel * self.L
         self.q_bar = self.q_per_channel / (A_fuel * self.L)
         
-        self.Vol_fuel = A_fuel * self.L
-        self.Vol_cool = A_cool * self.L
-
         # combine actual fuel volume with conservative q-bar to estimate
         # generation per pin.
         self.N_channels = math.ceil(Q_therm / self.q_per_channel)
+        self.Vol_fuel = A_fuel * self.L * self.N_channels
+        self.Vol_cool = A_cool * self.L * self.N_channels
 
-    def calc_dp(self):
+    def set_dp(self):
         """Calculate pressure drop subchannel
         """
         # El Wakil (9-4)
-        f = 0.184 / math.pow(self.Re, 0.2)
+        f = 0.316 / math.pow(self.Re, 0.2)
         # Darcy pressure drop (El-Wakil 9-3)
-        self.dp = f * self.L * rho_cool * self.v * self.v / (2*self.D_e)
-    
+        self.L = dp_allowed * 2 * self.D_e / (f * rho_cool * self.v**2) 
+
     def Iterate(self):
         """Perform Flow Calc Iteration
         """
         converge = False
-        while converge == False:
-            # perform necessary physics calculations
+#        while converge == False:
+        while self.iterations < 15:
+    # perform necessary physics calculations
             self.mass_flux_channel()
             self.calc_nondim()
+            self.set_dp()
             self.get_h_bar()
             self.get_q_bar(Q_therm)
-            self.calc_dp()
             converge = self.check_converge()
+            data = self.__dict__
+            print([(key, round(data[key],4)) for key in sorted(data.keys())])
             self.guess = self.N_channels
             self.iterations += 1
 
@@ -134,9 +129,6 @@ class FlowIteration:
         """Based on results of the iteration, calculate the reactor mass.
         """
         self.mass = self.Vol_fuel * rho_fuel
-        self.mass += self.Vol_cool * rho_cool
-        self.Vol_clad = ((self.r_channel + self.c)**2 - self.r_channel**2)
-        self.mass += self.Vol_clad * rho_W
     
 class StoreIteration:
     """ Save Data For Analysis:
