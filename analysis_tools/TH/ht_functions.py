@@ -52,7 +52,7 @@ class FlowIteration:
         self.A_flow = self.r_channel ** 2 * math.pi * self.guess
         self.A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
                       (self.r_channel + self.c) ** 2 * math.pi
-        self.A_fuel *= self.guess
+        
         self.G_dot = m_dot / self.A_flow
         self.D_e = 2 * self.r_channel
         self.v = self.G_dot / rho_cool
@@ -89,15 +89,18 @@ class FlowIteration:
         R_conv = (r_o/2)**2 *\
         (1-(r_i/r_o)**2)*(1/(self.h_bar*(r_i - self.c)))
         
+        # calculate centerline volumetric generation
         q_trip_max = self.dt / (R_fuel + R_clad + R_conv)
-        self.Vol_fuel = self.A_fuel * self.L
+        
         # consider axial flux variation
         self.q_per_channel = 2 * q_trip_max * self.A_fuel * self.L
-        self.q_bar = self.q_per_channel / self.Vol_fuel
         
         # combine actual fuel volume with conservative q-bar to estimate
         # generation per pin.
         self.N_channels = math.ceil(Q_therm / self.q_per_channel)
+        # calculate total fuel volume and q_bar
+        self.Vol_fuel = self.A_fuel * self.L * self.N_channels
+        self.q_bar = Q_therm / self.Vol_fuel
         
 
     def calc_dp(self):
