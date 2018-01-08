@@ -36,7 +36,7 @@ class FlowIteration:
         self.iterations = 0
 
     def check_converge(self):
-        """Test for solution convergence and pressure limit.
+        """Test for solution convergence.
         """
         if self.N_channels == self.guess:
             return True
@@ -81,8 +81,8 @@ class FlowIteration:
         """
         r_i = self.r_channel + self.c
         r_o = self.pitch
-        # this approximation does not consider axial flux variation!!!!
         
+        # El Wakil (9-62) calculates max q''' at axial centerline 
         R_fuel = (r_o**2 / (4*k_fuel)) * ((r_i/r_o)**2 - 2*math.log(r_i/r_o) - 1)
         R_clad = (r_o/2)**2 *\
         (1-(r_i/r_o)**2)*(math.log(r_i/(r_i-self.c))/k_clad)
@@ -101,7 +101,8 @@ class FlowIteration:
         
 
     def calc_dp(self):
-        """Calculate pressure drop subchannel
+        """Set reactor length based on flow velocity and required subchannel
+        pressure drop.
         """
         # El Wakil (9-4)
         f = 0.184 / math.pow(self.Re, 0.2)
