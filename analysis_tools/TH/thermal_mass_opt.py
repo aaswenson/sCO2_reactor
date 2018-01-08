@@ -8,7 +8,7 @@ import numpy as np
 import argparse
 import sys
 
-def sweep_configs(D, PD, z, c, N, key):
+def sweep_configs(D, PD, c, N, key):
     """Perform parametric sweep through pin cell geometric space.
     """
     # calculate appropriate step sizes given range
@@ -24,7 +24,7 @@ def sweep_configs(D, PD, z, c, N, key):
     # sweep through parameter space, calculate min mass
     for i in range(N):
         for j in range(N):
-            flowdata = FlowIteration(D[i,j], PD[i,j], c, z, 10)
+            flowdata = FlowIteration(D[i,j], PD[i,j], c, 10)
             flowdata.Iterate()
             flowdata.calc_reactor_mass()
             M[i][j] = flowdata.__dict__[key]
@@ -60,8 +60,8 @@ def plot_mass(D, PD, M, key):
     fig.colorbar(surf, shrink=0.5, aspect=5, format='%.0e')
     
     savename = key + '.png'
-    plt.savefig(savename, dpi=500)
-#    plt.show()
+#    plt.savefig(savename, dpi=500)
+    plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -69,7 +69,6 @@ if __name__ == '__main__':
     parser.add_argument("d_upper", type=float, help="channel D upper lim [m]")
     parser.add_argument("pd_lower", type=float, help="PD lower lim [m]")
     parser.add_argument("pd_upper", type=float, help="PD upper lim [m]")
-    parser.add_argument("z", type=float, help="axial height [m]")
     parser.add_argument("clad_t", type=float, help="cladding thickness [m]")
     parser.add_argument("steps", type=int, help="parameter resolution")
     parser.add_argument("plotkey", type=str, help="parameter parameter to plot")
@@ -83,7 +82,7 @@ diameter! Set min PD > 1!")
 
     Diameters, PDs, Masses = sweep_configs((args.d_lower, args.d_upper),
                                    (args.pd_lower, args.pd_upper), 
-                                   args.z, args.clad_t, args.steps, args.plotkey)
+                                   args.clad_t, args.steps, args.plotkey)
     # plot results
     plot_mass(Diameters, PDs, Masses, args.plotkey)
 

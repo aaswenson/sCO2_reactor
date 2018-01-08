@@ -15,7 +15,8 @@ class FlowIteration:
         guess (int): initial number of flow channels [-]
     """
     # geometric attributes
-    r_channel = 0; PD = 0; c = 0; L = 0; Vol_fuel = 0; Vol_cool = 0; Vol_clad=0
+    r_channel = 0; PD = 0; c = 0; L = 0; Vol_fuel = 0;
+    A_flow = 0; A_fuel = 0;
     guess = 0; N_channels = 0
     mass = 0
     # temperature drop
@@ -27,11 +28,10 @@ class FlowIteration:
     # heat generation
     q_bar = 0; q_per_channel = 0; q_therm_check = 0
     
-    def __init__(self, diameter, PD, c, L, guess):
+    def __init__(self, diameter, PD, c, guess):
         self.r_channel = diameter / 2.0
         self.pitch = self.r_channel * PD * 2
         self.c = c
-        self.L = L
         self.guess = guess
         self.iterations = 0
 
@@ -39,11 +39,7 @@ class FlowIteration:
         """Test for solution convergence and pressure limit.
         """
         if self.N_channels == self.guess:
-            if self.dp < dp_allowed:
-                return True
-            else:
-                self.N_channels += 1
-                return False
+            return True
         else:
             return False
     
@@ -53,11 +49,14 @@ class FlowIteration:
                    self.N_channels (int) number of fuel elements
         Returns: G_dot (float): coolant mass flux
         """
-        flow_area = math.pi *self.r_channel**2 * self.guess 
-        flow_perim = math.pi * self.r_channel * 2.0 * self.guess
-        self.G_dot = m_dot / flow_area
-        self.D_e = 4.0 * flow_area / flow_perim
+        self.A_flow = self.r_channel ** 2 * math.pi * self.guess
+        self.A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
+                      (self.r_channel + self.c) ** 2 * math.pi
+        self.A_fuel *= self.guess
+        self.G_dot = m_dot / self.A_flow
+        self.D_e = 2 * self.r_channel
         self.v = self.G_dot / rho_cool
+        print(self.v)
 
     def calc_nondim(self):
         """ Calculate Reynolds number
@@ -91,22 +90,15 @@ class FlowIteration:
         (1-(r_i/r_o)**2)*(1/(self.h_bar*(r_i - self.c)))
         
         q_trip_max = self.dt / (R_fuel + R_clad + R_conv)
-        
+        self.Vol_fuel = self.A_fuel * self.L
         # consider axial flux variation
-        A_fuel = math.sqrt(3)*self.pitch**2 / 2.0
-        A_cool = (self.r_channel + self.c)**2 * math.pi
-        A_fuel -= A_cool
-
-        self.q_per_channel = 2 * q_trip_max * A_fuel * self.L
-        self.q_bar = self.q_per_channel / (A_fuel * self.L)
+        self.q_per_channel = 2 * q_trip_max * self.A_fuel * self.L
+        self.q_bar = self.q_per_channel / self.Vol_fuel
         
-
         # combine actual fuel volume with conservative q-bar to estimate
         # generation per pin.
         self.N_channels = math.ceil(Q_therm / self.q_per_channel)
         
-        self.Vol_fuel = A_fuel * self.L * self.N_channels
-        self.Vol_cool = A_cool * self.L * self.N_channels
 
     def calc_dp(self):
         """Calculate pressure drop subchannel
@@ -114,23 +106,25 @@ class FlowIteration:
         # El Wakil (9-4)
         f = 0.184 / math.pow(self.Re, 0.2)
         # Darcy pressure drop (El-Wakil 9-3)
-        self.dp = f * self.L * rho_cool * self.v * self.v / (2*self.D_e)
-    
+        self.L = dp_allowed * 2 * self.D_e / (rho_cool * self.v**2)
+
     def Iterate(self):
         """Perform Flow Calc Iteration
         """
         converge = False
-        while converge == False:
+        while self.iterations < 10:
             # perform necessary physics calculations
             self.mass_flux_channel()
             self.calc_nondim()
+            self.calc_dp()
             self.get_h_bar()
             self.get_q_bar(Q_therm)
-            self.calc_dp()
             converge = self.check_converge()
+            data = self.__dict__
+            print([(key, round(data[key],5)) for key in sorted(data.keys())])
             self.guess = self.N_channels
             self.iterations += 1
-
+    
     def calc_reactor_mass(self):
         """Based on results of the iteration, calculate the reactor mass.
         """

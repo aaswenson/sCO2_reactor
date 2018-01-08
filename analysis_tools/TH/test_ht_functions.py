@@ -11,8 +11,6 @@ def test_check_converge():
     assert_false(test.check_converge())
     test.N_channels = test.guess
     assert_true(test.check_converge())
-    test.dp = 1e6
-    assert_false(test.check_converge())
 
 def test_mass_flux():
     """Test mass flux function.
