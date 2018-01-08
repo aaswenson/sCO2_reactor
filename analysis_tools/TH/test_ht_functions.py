@@ -7,7 +7,7 @@ from ht_functions import FlowIteration
 def test_check_converge():
     """Test the function to test for convergence.
     """
-    test = FlowIteration(1, 2, 0.00031, 1, 1)
+    test = FlowIteration(1, 2, 0.00031, 1)
     assert_false(test.check_converge())
     test.N_channels = test.guess
     assert_true(test.check_converge())
@@ -15,7 +15,7 @@ def test_check_converge():
 def test_mass_flux():
     """Test mass flux function.
     """
-    test = FlowIteration(1, 2, 0.00031, 1, 1)
+    test = FlowIteration(1, 2, 0.00031, 1)
     exp_G = m_dot / (math.pi * 0.5**2)
     exp_De = 2*test.r_channel
     exp_v = exp_G / rho_cool
@@ -28,7 +28,7 @@ def test_mass_flux():
 def test_nondim():
     """Test non-dimensional flow calculations.
     """
-    test = FlowIteration(1, 2, 0.00031, 1, 1)
+    test = FlowIteration(1, 2, 0.00031, 1)
     # get mass flux data
     test.mass_flux_channel()
     exp_Re = rho_cool * test.v * test.D_e / mu
@@ -42,7 +42,7 @@ def test_nondim():
 def test_h_bar():
     """Test function to calculate heat transfer coefficient.
     """ 
-    test = FlowIteration(1, 2, 0.00031, 1, 1)
+    test = FlowIteration(1, 2, 0.00031, 1)
     test.mass_flux_channel()
     test.calc_nondim()
     exp_hbar = test.Nu * k_cool / test.D_e
