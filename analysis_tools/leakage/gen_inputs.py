@@ -13,7 +13,7 @@ o= {1}.o x=/home/aaswenson/MCNP_DATA/xdata/xsdir\n"\
             .format(cores, string)
     file.write(entry)
 
-def write_input(radius, height, mat_card, kcode_params, bc):
+def write_input(radius, height, mat_card, rho, kcode_params, bc):
     """ Write MCNP6 input files.
     This function writes the MCNP6 input files for the leakage experiment using
     the template input string. It writes a bare and reflected core input file
@@ -22,7 +22,9 @@ def write_input(radius, height, mat_card, kcode_params, bc):
     bc_options = {'refl' : '+',
                   'bare' : ''}
     templ = base_string
-    file_string = templ.substitute(core_radius = radius,
+    file_string = templ.substitute(
+                           fuel_rho = rho,
+                           core_radius = radius,
                            core_height = height,
                            bc = bc_options[bc],
                            half_core_height = height / 2.0,
@@ -36,7 +38,7 @@ def write_input(radius, height, mat_card, kcode_params, bc):
     ifile.write(file_string)
     ifile.close()
 
-def homog_fuel_comp(r, PD, enrich):
+def homog_fuel_comp(r, PD, enrich, fuel_mass, core_volume):
     """Create mcnp data card for fast reactor fuel comp base on vol frac of fuel
     """
     # important constants relevant to W-UO2 CERMET fuel
@@ -49,11 +51,14 @@ def homog_fuel_comp(r, PD, enrich):
     cool_frac = 1 - fuel_frac
 
     # smear densities
+    # nominal rho_UN = 11.9
     rho_UN = 11.9
+    print(rho_UN)
     rho_W = 19.3
     rho_CO2 = 87.13
     cermet_rho = (rho_UN*vol_frac_U) + (1-vol_frac_U)*rho_W
     total_rho = cermet_rho*fuel_frac + rho_CO2 * cool_frac
+    smeared_rho = (fuel_mass / core_volume) / 1000.0 # convert kg/m^3 -> g/cc
 
     # get mass fractions
     mfrac_fuel = ((rho_UN*vol_frac_U) / cermet_rho) *\
@@ -83,19 +88,21 @@ def homog_fuel_comp(r, PD, enrich):
     del homogeneous_fuel['8018']
     homogeneous_fuel.metadata['mat_number'] = 1
 
-    return homogeneous_fuel.mcnp()
+    return homogeneous_fuel.mcnp(), smeared_rho
 
 def main():
     z = 50 # height of the core
     file = open('./inputs/leakage_submit.sh','w')
     # get homogeneous fuel for r=1cm, PD=1.2 90% U235
-    fuel_string = homog_fuel_comp(1, 1.2, 0.9)
     # write the inputs
+    fmass = 100 # kg of uranium
     for radius in range(10,110,10):
+        core_vol = math.pi * (radius / 100.0 ) **2 * (z / 100.0)
+        fuel_string, rho = homog_fuel_comp(1, 1.2, 0.9, fmass, core_vol)
         write_hpc_submit(radius, z, 'bare', file, 160)
         write_hpc_submit(radius, z, 'refl', file, 160)
-        write_input(radius, z, fuel_string, (150000, 35, 150), 'bare')
-        write_input(radius, z, fuel_string, (150000, 35, 150), 'refl')
+        write_input(radius, z, fuel_string, rho, (150000, 35, 150), 'bare')
+        write_input(radius, z, fuel_string, rho, (150000, 35, 150), 'refl')
     file.close()
 
 if __name__ == "__main__":
