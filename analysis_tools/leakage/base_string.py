@@ -2,7 +2,7 @@ from string import Template
 base_string = Template("""\
 MCNP6 leakage study radius:${core_radius} cm, height:${core_height} cm. 
 c Cell Card
-1 1 -6.25 -1 -2 3 imp:n=1  ${comm} cylindrical reactor
+1 1 -${fuel_rho} -1 -2 3 imp:n=1  ${comm} cylindrical reactor
 2 0 2:-3:(1 -2 3) imp:n=0  ${comm} outside world
  
 c Surface Card
