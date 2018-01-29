@@ -1,3 +1,12 @@
+""" Thermal-Hydraulic Optimization Module.
+This module contains functions to perform a parametric sweep of reactor
+geometric parameters. It calculates fuel mass and flow characteristics for each
+set of valid geometric parameters.
+
+Functions contained in this module:
+    *oneD_flow_modeling
+    *sweep_configs
+"""
 # Other imports
 import numpy as np
 import argparse
@@ -5,9 +14,27 @@ import sys
 # Import TH functions
 from ht_functions import FlowIteration, ParametricSweep
 
+def oneD_flow_modeling(analyze_flow):
+    """Conduct oneD_flow_modeling.
+
+    Arguments:
+    ----------
+        analyze_flow: (class) FlowIteration object. Contains attributes and
+        methods required to perform an N_channels calculation for a single
+        geometry (r, PD, L, c)
+
+    Returns:
+    --------
+        None
+    """
+    analyze_flow.oneD_calc()
+    analyze_flow.check_dp()
+    analyze_flow.calc_reactor_mass()
+    analyze_flow.calc_aspect_ratio()
         
-def sweep_configs(D, PD, z, c, N, key, save=False):
+def sweep_configs(D, PD, z, c, N, key, AR_select, save=False):
     """Perform parametric sweep through pin cell geometric space.
+
     """
     # calculate appropriate step sizes given range
     D_step = (D[1] - D[0]) / N
@@ -20,13 +47,12 @@ def sweep_configs(D, PD, z, c, N, key, save=False):
     D, PD = np.meshgrid(D, PD)
     
     # initialize object to save sweep results
-    sweepresults = ParametricSweep(D, PD, N)
+    sweepresults = ParametricSweep(D, PD, N, AR_select)
     # sweep through parameter space, calculate min mass
     for i in range(N):
         for j in range(N):
-            flowdata = FlowIteration(D[i,j], PD[i,j], c, z, 1)
-            flowdata.Iterate()
-            flowdata.calc_reactor_mass()
+            flowdata = FlowIteration(D[i,j], PD[i,j], c, z)
+            oneD_flow_modeling(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
     
     sweepresults.get_min_data()
@@ -48,6 +74,8 @@ if __name__ == '__main__':
     parser.add_argument("clad_t", type=float, help="cladding thickness [m]")
     parser.add_argument("steps", type=int, help="parameter resolution")
     parser.add_argument("plotkey", type=str, help="parameter parameter to plot")
+    parser.add_argument("--AR", action='store_true', dest='AR_select',
+            default=False, help="--selects data corresponding to valid AR's")
 
     args = parser.parse_args()
     
@@ -59,4 +87,4 @@ diameter! Set min PD > 1!")
     sweep_configs((args.d_lower, args.d_upper),
                                    (args.pd_lower, args.pd_upper), 
                                    args.z, args.clad_t, args.steps,
-                                   args.plotkey, True)
+                                   args.plotkey, args.AR_select, True)

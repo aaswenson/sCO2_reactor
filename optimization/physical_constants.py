@@ -29,7 +29,7 @@ rho_cool = 87.13 # coolant density [kg/m^3]
 rho_W = 19250 # clad density [kg/m^3]
 rho_UN = 11300 # fuel density [kg/m^3]
 
-Q_therm = 141200 # core thermal power [W]
+Q_therm = 131000 # core thermal power [W]
 T_in = 962.9 # core inlet temp [K] (from power cycle model)
 T_out = 1100 # core outlet temp [K] (from power cycle model)
 T_bulk = T_in + (T_out - T_in) / 2 # bulk coolant temp. [K]
@@ -38,7 +38,6 @@ T_centerline = 1847.5 # centerline fuel temperature [K]
 P_in = 1.79064e7 # inlet pressure [Pa]
 P_out = 1.74229e7 # outlet pressure [Pa]
 dp_allowed = abs(P_out - P_in)
-
 # conservative estimate for thermal conductivity at fuel centerline temperature.
 k_fuel = fuel_cond(T_centerline)
 # mixed density for CERMET fuel
