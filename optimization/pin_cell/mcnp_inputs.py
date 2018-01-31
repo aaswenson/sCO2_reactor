@@ -8,12 +8,15 @@ import physical_constants as pc
 
 
 class PinCellMCNP:
-    """Class to write MCNP
+    """Class to write MCNP input files for pin cell modeling in an infinite
+    lattice (in the x-y directions).
     """
-
+    # standard material numbers for fuel, clad, coolant
     mat_numbers = {'fuel' : 1, 'clad' : 2, 'cool' : 3}
+
+    # base template string modified by the methods below
     base_string = Template("""\
-MCNP6 leakage study radius:${radius} cm, height:${height} cm. 
+MCNP6 pin cell study radius:${radius} cm, height:${height} cm. 
 c Cell Card
 1 3 -${cool_rho} -1 4 -5 imp:n=1   ${comm} coolant channel
 2 2 -${clad_rho} 1 -2 4 -5 imp:n=1 ${comm} cladding
@@ -40,15 +43,13 @@ print
 """)
 
     def __init__(self, shape, radius, PD, clad_t, core_z):
-        """Initialize
+        """Initialize parameters.
         """
         self.r = radius
         self.pitch = (radius + clad_t) * PD * 2.0
         self.c = clad_t
         self.z = core_z
         self.type = shape
-
-    
     
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.
@@ -75,8 +76,6 @@ print
         
         self.fuel.metadata['mat_number'] = self.mat_numbers['fuel']
 
-        
-
     def write_mat_string(self, clad_mat, coolant_mat, matlib):
         """Write the material data.
         """
@@ -100,10 +99,6 @@ print
         self.mat_string += self.clad.mcnp(frac_type='atom') +\
                            self.cool.mcnp(frac_type='atom')
     
-
-
-        
-
     def write_input(self, kcode_params):
         """ Write MCNP6 input files.
         This function writes the MCNP6 input files for the leakage experiment using
@@ -132,8 +127,11 @@ print
         ifile.close()
 
 
-    
-def main():    
+
+
+def main():
+    """An example of using the PinCellMCNP class to write an input file.
+    """
     # Initialize material libraries.
     path_to_compendium = "/home/alex/.local/lib/python2.7/\
 site-packages/pyne/nuc_data.h5"
