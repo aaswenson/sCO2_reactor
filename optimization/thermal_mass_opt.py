@@ -11,10 +11,14 @@ Functions contained in this module:
 import numpy as np
 import argparse
 import sys
+from pyne.material import MaterialLibrary
+sys.path.append('./pin_cell/')
+sys.path.append('./pin_cell/inputs')
 # Import TH functions
 from ht_functions import Flow, ParametricSweep, flow_calc
 from plot import plot
-
+from mcnp_inputs import PinCellMCNP
+from physical_constants import rho_fuel
 
 def oneD_flow_modeling(analyze_flow):
     """Conduct oneD_flow_modeling.
@@ -51,13 +55,33 @@ def sweep_configs(diams, pds, z, c, N):
 
     # initialize object to save sweep results
     sweepresults = ParametricSweep(D_mesh, PD_mesh, N)
+
+    
+    # Initialize material libraries.
+    path_to_compendium = "/home/alex/.local/lib/python2.7/\
+site-packages/pyne/nuc_data.h5"
+    raw_matlib = MaterialLibrary()
+
+    # Write entire PyNE material library.
+    raw_matlib.from_hdf5(path_to_compendium,
+                         datapath="/material_library/materials",
+                         nucpath="/material_library/nucid")
+
     # sweep through parameter space, calculate min mass
     for i in range(N):
         for j in range(N):
             flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z)
             oneD_flow_modeling(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
-
+            # write MCNP input file
+            
+            infile = PinCellMCNP('hex',D[i,j]*50 , PD[i,j], c * 100, z *
+                    100)
+            infile.write_fuel_string(0.96, ('Nitrogen', 1), raw_matlib)
+            infile.write_mat_string('Steel, Stainless 316', 'Carbon Dioxide',
+                raw_matlib)
+            infile.write_input([5000, 25, 40])
+    
     sweepresults.get_min_data()
     sweepresults.disp_min_mass()
     
