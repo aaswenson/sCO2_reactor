@@ -11,35 +11,19 @@ Functions contained in this module:
 import numpy as np
 import argparse
 import sys
+import os
 from pyne.material import MaterialLibrary
-sys.path.append('./pin_cell/')
-sys.path.append('./pin_cell/inputs')
 # Import TH functions
 from ht_functions import Flow, ParametricSweep, flow_calc
 from plot import plot
 from mcnp_inputs import PinCellMCNP
 from physical_constants import rho_fuel
-
-def oneD_flow_modeling(analyze_flow):
-    """Conduct oneD_flow_modeling.
-
-    Arguments:
-    ----------
-        analyze_flow: (class) Flow object. Contains attributes and
-        methods required to perform an N_channels calculation for a single
-        geometry (r, PD, L, c)
-
-    Returns:
-    --------
-        None
-    """
-    flow_calc(analyze_flow)
-    analyze_flow.adjust_dp()
-    analyze_flow.calc_reactor_mass()
-    analyze_flow.calc_aspect_ratio()
+from scale_inputs import PinCellSCALE
 
 
-def sweep_configs(diams, pds, z, c, N):
+
+        
+def sweep_configs(R, PD, z, c, N, key, AR_select, save=False):
     """Perform parametric sweep through pin cell geometric space.
 
     """
@@ -55,7 +39,6 @@ def sweep_configs(diams, pds, z, c, N):
 
     # initialize object to save sweep results
     sweepresults = ParametricSweep(D_mesh, PD_mesh, N)
-
     
     # Initialize material libraries.
     path_to_compendium = "/home/alex/.local/lib/python2.7/\
@@ -66,8 +49,12 @@ site-packages/pyne/nuc_data.h5"
     raw_matlib.from_hdf5(path_to_compendium,
                          datapath="/material_library/materials",
                          nucpath="/material_library/nucid")
+    pool_size = 8
+    pool = Pool(pool_size)
+    
+    t0 = time.time()
 
-    # sweep through parameter space, calculate min mass
+    # sweep through parameter space, calculate min mass    
     for i in range(N):
         for j in range(N):
             flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z)
@@ -89,8 +76,8 @@ site-packages/pyne/nuc_data.h5"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("d_lower", type=float, help="channel D lower lim [m]")
-    parser.add_argument("d_upper", type=float, help="channel D upper lim [m]")
+    parser.add_argument("r_lower", type=float, help="channel r lower lim [m]")
+    parser.add_argument("r_upper", type=float, help="channel r upper lim [m]")
     parser.add_argument("pd_lower", type=float, help="PD lower lim [m]")
     parser.add_argument("pd_upper", type=float, help="PD upper lim [m]")
     parser.add_argument("z", type=float, help="axial height [m]")

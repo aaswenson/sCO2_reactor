@@ -86,7 +86,7 @@ class Flow:
     q_bar = 0 # axially-averaged volumetric generation
     q_per_channel = 0 # generation per fuel channel
 
-    def __init__(self, diameter, PD, c, L):
+    def __init__(self, radius, PD, c, L):
         """Initialize the flow iteration class.
 
         Initialized Attributes:
@@ -96,7 +96,7 @@ class Flow:
             pitch: fuel thickness (minor axis of hexagon) [m]
             L: length of core [m]
         """
-        self.r_channel = diameter / 2.0
+        self.r_channel = radius
         self.c = c
         self.pitch = (self.r_channel + self.c) * PD * 2
         self.L = L
@@ -289,23 +289,23 @@ class ParametricSweep():
     """Class to store results of parametric sweeps for 1D flow channel analysis.
 
     """
-    titles = {'mass': ("Total Fuel Mass", "m [kg]"),
-              'Re': ("Reynolds Number", "Re [-]"),
-              'G_dot': ("Reactor Mass Flux", "G_dot [kg/m^2-s]"),
-              'N_channels': ("Number of Fuel Channels", "N Channels [-]"),
-              'Nu': ("Nusselt Number", "Nu [-]"),
-              'dp': ("Subchannel Pressure Drop", "dP [Pa]"),
-              'h_bar': ("Heat Transfer Coefficient", "h [W / m^2 - K]"),
-              'q_per_channel': ("Total Subchannel Generation", "q/channel [W]"),
-              'q_bar': ("Average Volumetric Generation", "q_bar [W/m^3]"),
-              'v': ("Flow Velocity", "v [m/s]"),
-              'R_fuel': ("Resistance to Conduction in Fuel", "R_fuel [K/W]"),
-              'R_clad': ("Resistance to Conduction in Clad", "R_clad [K/W]"),
-              'R_conv': ("Resistance to Convection", "R_conv [K/W]"),
-              'R_tot': ("Total Resistance to Heat Transfer", "R_tot [K/W]"),
-              'AR': ("Approximate Core Aspect Ratio", "AR [-]")
-              }
-
+    titles = {'mass' : ("Total Fuel Mass", "m [kg]"),
+              'Re' : ("Reynolds Number", "Re [-]"),
+              'G_dot' : ("Reactor Mass Flux", "G_dot [kg/m^2-s]"),
+              'N_channels' : ("Number of Fuel Channels", "N Channels [-]"),
+              'Nu' : ("Nusselt Number", "Nu [-]"),
+              'dp' : ("Subchannel Pressure Drop", "dP [Pa]"),
+              'h_bar' : ("Heat Transfer Coefficient", "h [W / m^2 - K]"),
+              'q_per_channel' : ("Total Subchannel Generation", "q/channel [W]"),
+              'q_bar' : ("Average Volumetric Generation", "q_bar [W/m^3]"),
+              'v' : ("Flow Velocity", "v [m/s]"),
+              'R_fuel' : ("Resistance to Conduction in Fuel", "R_fuel [K/W]"),
+              'R_clad' : ("Resistance to Conduction in Clad", "R_clad [K/W]"),
+              'R_conv' : ("Resistance to Convection", "R_conv [K/W]"),
+              'R_tot' : ("Total Resistance to Heat Transfer", "R_tot [K/W]"),
+              'AR' : ("Approximate Core Aspect Ratio", "AR [-]"),
+              'keff' : ("Pin Cell Eigenvalue", "keff [-]")
+             }
     # dict to save data for plotting
     data = {k: [] for k in titles.keys()}
 
