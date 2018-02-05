@@ -11,15 +11,40 @@ Functions contained in this module:
 import numpy as np
 import argparse
 import sys
+import time
+from multiprocessing.pool import ThreadPool as Pool
+import os
 from pyne.material import MaterialLibrary
-sys.path.append('./pin_cell/')
-sys.path.append('./pin_cell/inputs')
 # Import TH functions
 from ht_functions import FlowIteration, ParametricSweep
-from mcnp_inputs import PinCellMCNP
+from scale_inputs import PinCellSCALE
 from physical_constants import rho_fuel
 
 
+def worker(R, PD, c, z, i, j, sweepresults, pyne_matlib):
+    r = R[i,j]; pd_ratio = PD[i,j]
+    # perform flow calculation
+    flowdata = FlowIteration(r, pd_ratio, c, z)
+    oneD_flow_modeling(flowdata)
+    # write scale input file
+    input = PinCellSCALE(r, pd_ratio, c)
+    input.write_fuel_string(0.9, ('Nitrogen', 1), pyne_matlib)
+    input.write_mat_string('Inconel-718', 'Carbon Dioxide', pyne_matlib)
+    infilename = input.write_input()
+    # run scale
+    command = "batch6.1 " + infilename
+    os.system(command)
+    
+    resultsfile = infilename.split('.inp')[0] + ".out"
+    
+    with open(resultsfile, 'r') as results:
+        for line in results:
+            if 'k-eff = ' in line:
+                keff = line.split()
+                flowdata.keff = float(keff[2])
+                break
+
+    sweepresults.save_iteration(flowdata, i, j)
 
 def oneD_flow_modeling(analyze_flow):
     """Conduct oneD_flow_modeling.
@@ -39,22 +64,22 @@ def oneD_flow_modeling(analyze_flow):
     analyze_flow.calc_reactor_mass()
     analyze_flow.calc_aspect_ratio()
         
-def sweep_configs(D, PD, z, c, N, key, AR_select, save=False):
+def sweep_configs(R, PD, z, c, N, key, AR_select, save=False):
     """Perform parametric sweep through pin cell geometric space.
 
     """
     # calculate appropriate step sizes given range
-    D_step = (D[1] - D[0]) / N
+    D_step = (R[1] - R[0]) / N
     PD_step = (PD[1] - PD[0]) / N
     # ranges for diameter and pitch/diameter ratio
-    D = np.arange(D[0], D[1], D_step)
+    R = np.arange(R[0], R[1], D_step)
     PD = np.arange(PD[0], PD[1], PD_step)
 
     # create parameter mesh
-    D, PD = np.meshgrid(D, PD)
+    R, PD = np.meshgrid(R, PD)
     
     # initialize object to save sweep results
-    sweepresults = ParametricSweep(D, PD, N, AR_select)
+    sweepresults = ParametricSweep(R, PD, N, AR_select)
 
     
     # Initialize material libraries.
@@ -66,35 +91,36 @@ site-packages/pyne/nuc_data.h5"
     raw_matlib.from_hdf5(path_to_compendium,
                          datapath="/material_library/materials",
                          nucpath="/material_library/nucid")
+    pool_size = 8
+    pool = Pool(pool_size)
+    
+    t0 = time.time()
 
-    # sweep through parameter space, calculate min mass
+    # sweep through parameter space, calculate min mass    
     for i in range(N):
         for j in range(N):
-            flowdata = FlowIteration(D[i,j], PD[i,j], c, z)
-            oneD_flow_modeling(flowdata)
-            sweepresults.save_iteration(flowdata, i, j)
-            # write MCNP input file
-            
-            infile = PinCellMCNP('hex',D[i,j]*50 , PD[i,j], c * 100, z *
-                    100)
-            infile.write_fuel_string(0.96, ('Nitrogen', 1), raw_matlib)
-            infile.write_mat_string('Steel, Stainless 316', 'Carbon Dioxide',
-                raw_matlib)
-            infile.write_input([5000, 25, 40])
-    
+            pool.apply_async(worker, (R, PD, c, z, i, j, sweepresults,
+                raw_matlib, ))
+    pool.close()
+    pool.join()
+
+    print(time.time() - t0)
+
+    # get minimum data        
     sweepresults.get_min_data()
-    plt = sweepresults.plot(D, PD, key)
+    plt = sweepresults.plot(R, PD, key)
     
     if save == True:
         savename = key + '.png'
         plt.savefig(savename, dpi=500)
 
-    plt.show()
+#    plt.show()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("d_lower", type=float, help="channel D lower lim [m]")
-    parser.add_argument("d_upper", type=float, help="channel D upper lim [m]")
+    parser.add_argument("r_lower", type=float, help="channel r lower lim [m]")
+    parser.add_argument("r_upper", type=float, help="channel r upper lim [m]")
     parser.add_argument("pd_lower", type=float, help="PD lower lim [m]")
     parser.add_argument("pd_upper", type=float, help="PD upper lim [m]")
     parser.add_argument("z", type=float, help="axial height [m]")
@@ -111,7 +137,7 @@ if __name__ == '__main__':
 diameter! Set min PD > 1!")
         sys.exit()
 
-    sweep_configs((args.d_lower, args.d_upper),
-                                   (args.pd_lower, args.pd_upper), 
-                                   args.z, args.clad_t, args.steps,
-                                   args.plotkey, args.AR_select, True)
+    sweep_configs((args.r_lower, args.r_upper),
+                  (args.pd_lower, args.pd_upper), 
+                   args.z, args.clad_t, args.steps,
+                   args.plotkey, args.AR_select, True)

@@ -52,7 +52,7 @@ class FlowIteration:
     # heat generation
     q_bar = 0; q_per_channel = 0;
 
-    def __init__(self, diameter, PD, c, L):
+    def __init__(self, radius, PD, c, L):
         """Initialize the flow iteration class.
         
         Initialized Attributes:
@@ -62,7 +62,7 @@ class FlowIteration:
             pitch: fuel thickness (minor axis of hexagon) [m]
             L: length of core [m]
         """
-        self.r_channel = diameter / 2.0
+        self.r_channel = radius
         self.c = c
         self.pitch = (self.r_channel + self.c) * PD * 2
         self.L = L
@@ -275,7 +275,8 @@ class ParametricSweep():
               'R_clad' : ("Resistance to Conduction in Clad", "R_clad [K/W]"),
               'R_conv' : ("Resistance to Convection", "R_conv [K/W]"),
               'R_tot' : ("Total Resistance to Heat Transfer", "R_tot [K/W]"),
-              'AR' : ("Approximate Core Aspect Ratio", "AR [-]")
+              'AR' : ("Approximate Core Aspect Ratio", "AR [-]"),
+              'keff' : ("Pin Cell Eigenvalue", "keff [-]")
              }
 
     D = 0; PD = 0;

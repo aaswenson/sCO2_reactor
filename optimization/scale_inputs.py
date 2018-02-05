@@ -7,7 +7,7 @@ import sys
 import physical_constants as pc
 
 
-class PinCellMCNP:
+class PinCellSCALE:
     """Class to write MCNP input files for pin cell modeling in an infinite
     lattice (in the x-y directions).
     """
@@ -15,41 +15,71 @@ class PinCellMCNP:
     mat_numbers = {'fuel' : 1, 'clad' : 2, 'cool' : 3}
 
     # base template string modified by the methods below
-    base_string = Template("""\
-MCNP6 pin cell study radius:${radius} cm, height:${height} cm. 
-c Cell Card
-1 3 -${cool_rho} -1 4 -5 imp:n=1   ${comm} coolant channel
-2 2 -${clad_rho} 1 -2 4 -5 imp:n=1 ${comm} cladding
-3 1 -${fuel_rho} -3 2 4 -5 imp:n=1 ${comm} fuel
-99 0 5:-4:(3 -5 4) imp:n=0  ${comm} outside world
- 
-c Surface Card
-1 CZ ${radius}
-2 CZ ${clad_radius}
-3+ rhp 0 0 -10000 0 0 100000 ${pitch} 0
-4 PZ -${half_height}
-5 PZ ${half_height}
+    base_string = Template("""=t-newt
+first-input-fiile
+v5-44
 
-c Data Card
-${mat}\
-kcode ${n_per_cycle} 1 ${non_active_cycles} ${total_cycles}
-ksrc  1 1 1
-     -1 -1 -1 
-     1 -1 1
-     -1 1 1
-     1 1 -1
-mode n
-print
+read comp
+${mat}
+end comp
+
+read celldata
+latticecell squarepitch hpitch=0.7 3 fuelr=0.5 1 cladr=0.55 2 end
+end celldata
+
+read model
+
+read parameters
+  run=yes
+  epseigen=0.01
+  converge=mix
+  collapse=yes
+  drawit=yes
+  echo=yes
+  prtflux=yes
+  prthmmix=yes
+  timed=yes
+end parameters
+
+read hmog
+500 fuel 1 end
+501 nonfuel 2 end
+502 allsmear 1 2 3 end
+end hmog
+
+read collapse
+30r1 14r2
+end collapse
+
+read materials
+  mix=1 pn=1 com='UN fuel' end
+  mix=2 pn=1 com='clad' end
+  mix=3 pn=3 com='sCO2 coolant' end
+end materials
+
+read geometry
+global unit 1
+cylinder 11 ${radius}  sides=20
+cylinder 12 ${clad_radius} sides=20
+rhexprism 13 ${pitch}
+
+media 3 1 11
+media 2 1 12 -11
+media 1 1 13 -12
+
+boundary 13 20 20
+end geometry
+
+end model
+end
 """)
 
-    def __init__(self, shape, radius, PD, clad_t, core_z):
+    def __init__(self, radius, PD, clad_t):
         """Initialize parameters.
         """
-        self.r = radius
-        self.pitch = (radius + clad_t) * PD * 2.0
-        self.c = clad_t
-        self.z = core_z
-        self.type = shape
+        self.r = radius * 100
+        self.pitch = (self.r + clad_t) * PD * 2.0
+        self.c = clad_t * 100
     
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.
@@ -80,10 +110,10 @@ print
         """Write the material data.
         """
         kg_m3_to_g_cc = 0.001
-        self.mat_string = self.fuel.mcnp(frac_type='atom')
+        self.mat_string = self.fuel.scale(1847)
         
-        self.cool = matlib[coolant_mat]
-        self.clad = matlib[clad_mat]
+        self.cool = matlib[coolant_mat].collapse_elements([])
+        self.clad = matlib[clad_mat].collapse_elements([])
         
         # delete O-18 because MCNP gets cranky
         del self.fuel['8018']; del self.cool['8018']; del self.clad['8018']
@@ -96,10 +126,10 @@ print
         self.cool.density = pc.rho_cool*kg_m3_to_g_cc
         self.clad.density = pc.rho_W*kg_m3_to_g_cc
         
-        self.mat_string += self.clad.mcnp(frac_type='atom') +\
-                           self.cool.mcnp(frac_type='atom')
+        self.mat_string += self.clad.scale(1400) +\
+                           self.cool.scale(1000)
     
-    def write_input(self, kcode_params):
+    def write_input(self):
         """ Write MCNP6 input files.
         This function writes the MCNP6 input files for the leakage experiment using
         the template input string. It writes a bare and reflected core input file
@@ -113,24 +143,20 @@ print
                                radius = self.r,
                                clad_radius = self.r + self.c,
                                pitch = self.pitch,
-                               half_height = self.z / 2.0,
-                               height = self.z,
                                mat = self.mat_string,
-                               n_per_cycle = kcode_params[0],
-                               non_active_cycles = kcode_params[1],
-                               total_cycles = kcode_params[2],
                                comm = "$")
         # write the file
-        ifile = open("./pin_cell/inputs/leakage_{0}_{1}.i".
-                format(round(self.r, 5), round(self.z, 5)),'w')
+        ifile_name = "./inputs/leakage_{0}_{1}.inp".format(round(self.r, 5),
+                                              round(self.pitch, 5))
+        ifile = open(ifile_name, 'w')
         ifile.write(file_string)
         ifile.close()
-
-
+        
+        return ifile_name
 
 
 def main():
-    """An example of using the PinCellMCNP class to write an input file.
+    """An example of using the PinCellSCALE class to write an input file.
     """
     # Initialize material libraries.
     path_to_compendium = "/home/alex/.local/lib/python2.7/\
@@ -142,11 +168,11 @@ site-packages/pyne/nuc_data.h5"
                          datapath="/material_library/materials",
                          nucpath="/material_library/nucid")
 
-    test = PinCellMCNP('hex', 0.5, 1.5, 0.031, 25)
+    test = PinCellSCALE(0.5, 1.5, 0.031)
     
-    test.write_fuel_string(0.9999, ('Nitrogen', 1), raw_matlib)
-    test.write_mat_string('Tungsten', 'Carbon Dioxide', raw_matlib)
-    test.write_input([1,1,1])
+    test.write_fuel_string(0.9, ('Nitrogen', 1), raw_matlib)
+    test.write_mat_string('Inconel-718', 'Carbon Dioxide', raw_matlib)
+    test.write_input()
 
 if __name__ == '__main__':
     main()
