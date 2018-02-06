@@ -284,9 +284,8 @@ class ParametricSweep():
     # dict to save data for plotting
     data = {k: [] for k in titles.keys()}
     min_idx = None; min_jdk = None; min_mass = 0; minD = 0; min_PD = 0;
-    select_AR = False
     
-    def __init__(self, D, PD, N, select_AR):
+    def __init__(self, D, PD, N, select_AR=False):
         self.D = D
         self.PD = PD
         self.N = N

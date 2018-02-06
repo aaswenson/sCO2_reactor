@@ -13,6 +13,7 @@ import argparse
 import sys
 import time
 from multiprocessing.pool import ThreadPool as Pool
+from multiprocessing import Lock, RLock
 import os
 from pyne.material import MaterialLibrary
 # Import TH functions
@@ -21,52 +22,44 @@ from scale_inputs import PinCellSCALE
 from physical_constants import rho_fuel
 
 
-def worker(R, PD, c, z, i, j, sweepresults, pyne_matlib):
-    r = R[i,j]; pd_ratio = PD[i,j]
+def THCalc(r, pd_ratio, c, z):
     # perform flow calculation
     flowdata = FlowIteration(r, pd_ratio, c, z)
-    oneD_flow_modeling(flowdata)
+    flowdata.oneD_calc()
+    flowdata.check_dp()
+    flowdata.calc_reactor_mass()
+    flowdata.calc_aspect_ratio()
+
+    return flowdata
+
+def write_scale_inputs(r, pd_ratio, c, pyne_matlib):
+    """
+    """
     # write scale input file
     input = PinCellSCALE(r, pd_ratio, c)
     input.write_fuel_string(0.9, ('Nitrogen', 1), pyne_matlib)
     input.write_mat_string('Inconel-718', 'Carbon Dioxide', pyne_matlib)
     infilename = input.write_input()
-    # run scale
-    command = "batch6.1 " + infilename
-    os.system(command)
-    
-    resultsfile = infilename.split('.inp')[0] + ".out"
-    
-    with open(resultsfile, 'r') as results:
-        for line in results:
-            if 'k-eff = ' in line:
-                keff = line.split()
-                flowdata.keff = float(keff[2])
-                break
 
-    sweepresults.save_iteration(flowdata, i, j)
-
-def oneD_flow_modeling(analyze_flow):
-    """Conduct oneD_flow_modeling.
-
-    Arguments:
-    ----------
-        analyze_flow: (class) FlowIteration object. Contains attributes and
-        methods required to perform an N_channels calculation for a single
-        geometry (r, PD, L, c)
-
-    Returns:
-    --------
-        None
+def run_scale(R, PD, i, j):
     """
-    analyze_flow.oneD_calc()
-    analyze_flow.check_dp()
-    analyze_flow.calc_reactor_mass()
-    analyze_flow.calc_aspect_ratio()
-        
-def sweep_configs(R, PD, z, c, N, key, AR_select, save=False):
-    """Perform parametric sweep through pin cell geometric space.
+    """
+    r = R[i,j] * 100
+    pitch = PD[i,j]
+    ifilename = "./inputs/leakage_{0}_{1}.inp".format(round(r, 5),
+                                                      round(pitch, 5))
+    ofilename = "./inputs/leakage_{0}_{1}".format(round(r, 5),
+                                                      round(pitch, 5))
+    command = "batch6.1 " + ifilename + " -o " + ofilename
 
+    os.system(command)
+
+def save_keff(N, saveiterations):
+    for i in range(N):
+        for j in range(N):
+
+def sweep_configs(R, PD, z, c, N, key, neutronics, save=False):
+    """Perform parametric sweep through pin cell geometric space.
     """
     # calculate appropriate step sizes given range
     D_step = (R[1] - R[0]) / N
@@ -79,7 +72,7 @@ def sweep_configs(R, PD, z, c, N, key, AR_select, save=False):
     R, PD = np.meshgrid(R, PD)
     
     # initialize object to save sweep results
-    sweepresults = ParametricSweep(R, PD, N, AR_select)
+    sweepresults = ParametricSweep(R, PD, N)
 
     
     # Initialize material libraries.
@@ -91,20 +84,26 @@ site-packages/pyne/nuc_data.h5"
     raw_matlib.from_hdf5(path_to_compendium,
                          datapath="/material_library/materials",
                          nucpath="/material_library/nucid")
-    pool_size = 8
-    pool = Pool(pool_size)
     
-    t0 = time.time()
-
     # sweep through parameter space, calculate min mass    
     for i in range(N):
         for j in range(N):
-            pool.apply_async(worker, (R, PD, c, z, i, j, sweepresults,
-                raw_matlib, ))
-    pool.close()
-    pool.join()
+            r = R[i,j]; pd_ratio = PD[i,j]
+            TH_configuration = THCalc(r, pd_ratio, c, z)
+            if neutronics == True:
+                write_scale_inputs(r, pd_ratio, c, raw_matlib)
 
-    print(time.time() - t0)
+    if neutronics == True:
+        pool_size = 8
+        pool = Pool(pool_size) 
+        for i in range(N):
+            for j in range(N):
+                run_scale(R, PD, i, j)
+#               pool.apply_async(run_scale, (R, PD, i, j, ))
+#        pool.close()
+#        pool.join()
+
+    sweepresults.save_iteration(TH_configuration, i, j)
 
     # get minimum data        
     sweepresults.get_min_data()
@@ -127,8 +126,9 @@ if __name__ == '__main__':
     parser.add_argument("clad_t", type=float, help="cladding thickness [m]")
     parser.add_argument("steps", type=int, help="parameter resolution")
     parser.add_argument("plotkey", type=str, help="parameter parameter to plot")
-    parser.add_argument("--AR", action='store_true', dest='AR_select',
-            default=False, help="--selects data corresponding to valid AR's")
+    parser.add_argument("--n", action='store_true', dest='neutronics',
+            default=False, help="--write scale inputs and run reactor physics\
+calc")
 
     args = parser.parse_args()
     
@@ -140,4 +140,4 @@ diameter! Set min PD > 1!")
     sweep_configs((args.r_lower, args.r_upper),
                   (args.pd_lower, args.pd_upper), 
                    args.z, args.clad_t, args.steps,
-                   args.plotkey, args.AR_select, True)
+                   args.plotkey, args.neutronics, True)
