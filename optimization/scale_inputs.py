@@ -77,6 +77,7 @@ end
     def __init__(self, radius, PD, clad_t):
         """Initialize parameters.
         """
+        self.pd = PD
         self.r = radius * 100
         self.pitch = (self.r + clad_t) * PD * 2.0
         self.c = clad_t * 100
@@ -147,7 +148,7 @@ end
                                comm = "$")
         # write the file
         ifile_name = "./inputs/leakage_{0}_{1}.inp".format(round(self.r, 5),
-                                              round(self.pitch, 5))
+                                              round(self.pd, 5))
         ifile = open(ifile_name, 'w')
         ifile.write(file_string)
         ifile.close()

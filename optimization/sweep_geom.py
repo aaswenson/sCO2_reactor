@@ -21,11 +21,35 @@ from physical_constants import rho_fuel
 from scale_inputs import PinCellSCALE
 
 
-
         
-def sweep_configs(R, PD, z, c, N, key, AR_select, save=False):
-    """Perform parametric sweep through pin cell geometric space.
+def write_scale_inputs(r, pd_ratio, c, pyne_matlib):
+    """
+    """
+    # write scale input file
+    input = PinCellSCALE(r, pd_ratio, c)
+    input.write_fuel_string(0.9, ('Nitrogen', 1), pyne_matlib)
+    input.write_mat_string('Inconel-718', 'Carbon Dioxide', pyne_matlib)
+    infilename = input.write_input()
 
+def run_scale(R, PD, i, j):
+    """
+    """
+    r = R[i,j] * 100
+    pitch = PD[i,j]
+    ifilename = "./inputs/leakage_{0}_{1}.inp".format(round(r, 5),
+                                                      round(pitch, 5))
+    ofilename = "./inputs/leakage_{0}_{1}".format(round(r, 5),
+                                                      round(pitch, 5))
+    command = "batch6.1 " + ifilename + " -o " + ofilename
+
+    os.system(command)
+
+def save_keff(N, saveiterations):
+    for i in range(N):
+        for j in range(N):
+
+def sweep_configs(R, PD, z, c, N, neutronics):
+    """Perform parametric sweep through pin cell geometric space.
     """
     # calculate appropriate step sizes given range
     D_step = (diams[1] - diams[0]) / N
@@ -49,16 +73,12 @@ site-packages/pyne/nuc_data.h5"
     raw_matlib.from_hdf5(path_to_compendium,
                          datapath="/material_library/materials",
                          nucpath="/material_library/nucid")
-    pool_size = 8
-    pool = Pool(pool_size)
     
-    t0 = time.time()
-
     # sweep through parameter space, calculate min mass    
     for i in range(N):
         for j in range(N):
             flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z)
-            oneD_flow_modeling(flowdata)
+            flow_calc(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
             # write MCNP input file
             
@@ -69,6 +89,21 @@ site-packages/pyne/nuc_data.h5"
                 raw_matlib)
             infile.write_input([5000, 25, 40])
     
+            r = R[i,j]; pd_ratio = PD[i,j]
+            TH_configuration = THCalc(r, pd_ratio, c, z)
+            if neutronics == True:
+                write_scale_inputs(r, pd_ratio, c, raw_matlib)
+
+    if neutronics == True:
+        pool_size = 8
+        pool = Pool(pool_size) 
+        for i in range(N):
+            for j in range(N):
+                run_scale(R, PD, i, j)
+
+    sweepresults.save_iteration(TH_configuration, i, j)
+
+    # get minimum data        
     sweepresults.get_min_data()
     sweepresults.disp_min_mass()
     
@@ -87,6 +122,9 @@ if __name__ == '__main__':
                         help="parameter parameter to plot")
     parser.add_argument("-i", action='store_true', dest='show',
                         default=False, help="--display plot")
+    parser.add_argument("--n", action='store_true', dest='neutronics',
+            default=False, help="--write scale inputs and run reactor physics\
+calc")
 
     args = parser.parse_args()
 
@@ -98,7 +136,8 @@ if __name__ == '__main__':
 
     sweepresults = sweep_configs((args.d_lower, args.d_upper),
                                  (args.pd_lower, args.pd_upper),
-                                  args.z, args.clad_t, args.steps)
+                                  args.z, args.clad_t, args.steps,
+                                  args.neutronics)
     
     if args.plotkey:
         plt = plot(sweepresults, args.plotkey)
