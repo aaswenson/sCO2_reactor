@@ -12,14 +12,31 @@ import numpy as np
 import argparse
 import sys
 import os
+import tempfile
+import subprocess
+import multiprocessing as mp
+import glob
+import itertools
 from pyne.material import MaterialLibrary
 # Import TH functions
 from ht_functions import Flow, ParametricSweep, flow_calc
 from plot import plot
 from mcnp_inputs import PinCellMCNP
-from physical_constants import rho_fuel
 from scale_inputs import PinCellSCALE
+from physical_constants import rho_fuel
 
+def load_pyne_matlib():
+
+    # Initialize material libraries.
+    path_to_compendium = "/home/alex/.local/lib/python2.7/\
+site-packages/pyne/nuc_data.h5"
+    raw_matlib = MaterialLibrary()
+
+    # Write entire PyNE material library.
+    raw_matlib.from_hdf5(path_to_compendium,
+                         datapath="/material_library/materials",
+                         nucpath="/material_library/nucid")
+    return raw_matlib
 
         
 def write_scale_inputs(r, pd_ratio, c, pyne_matlib):
@@ -27,26 +44,43 @@ def write_scale_inputs(r, pd_ratio, c, pyne_matlib):
     """
     # write scale input file
     input = PinCellSCALE(r, pd_ratio, c)
-    input.write_fuel_string(0.9, ('Nitrogen', 1), pyne_matlib)
+    input.write_fuel_string(0.6, ('Nitrogen', 1), pyne_matlib)
     input.write_mat_string('Inconel-718', 'Carbon Dioxide', pyne_matlib)
     infilename = input.write_input()
 
-def run_scale(R, PD, i, j):
+    return infilename
+
+def work(in_file):
+    """Defines work unit on an input file"""
+    subprocess.call(['batch6.1', '{}'.format(in_file)])
+
+
+def run_scale():
     """
     """
-    r = R[i,j] * 100
-    pitch = PD[i,j]
-    ifilename = "./inputs/leakage_{0}_{1}.inp".format(round(r, 5),
-                                                      round(pitch, 5))
-    ofilename = "./inputs/leakage_{0}_{1}".format(round(r, 5),
-                                                      round(pitch, 5))
-    command = "batch6.1 " + ifilename + " -o " + ofilename
+    inputs = './inputs/*inp'
+    tasks = glob.glob(inputs)
+    # set up parallel pool
+    count = mp.cpu_count()
+    pool = mp.Pool(processes=count)
+    # run jobs
+    pool.map(work, tasks)
 
-    os.system(command)
-
-def save_keff(N, saveiterations):
+def save_keff(N, saveiterations, R, PD):
+    
     for i in range(N):
-        for j in range(N):
+      for j in range(N):
+          # get name of output file
+          r = R[i,j] * 100; pd = PD[i,j]
+          ofilename = "./inputs/leakage_{0}_{1}.out".format(round(r, 5),
+                                                        round(pd, 5))
+          with open(ofilename, 'r') as results:
+              for line in results:
+                  if 'k-eff = ' in line:
+                      keff = line.split()
+                      saveiterations.data['keff'][i,j] =\
+                                             float(keff[2])
+                      break
 
 def sweep_configs(R, PD, z, c, N, neutronics):
     """Perform parametric sweep through pin cell geometric space.
@@ -54,6 +88,7 @@ def sweep_configs(R, PD, z, c, N, neutronics):
     # calculate appropriate step sizes given range
     D_step = (diams[1] - diams[0]) / N
     PD_step = (pds[1] - pds[0]) / N
+    
     # ranges for diameter and pitch/diameter ratio
     D_array = np.arange(diams[0], diams[1], D_step)
     PD_array = np.arange(pds[0], pds[1], PD_step)
@@ -91,9 +126,12 @@ site-packages/pyne/nuc_data.h5"
     
             r = R[i,j]; pd_ratio = PD[i,j]
             TH_configuration = THCalc(r, pd_ratio, c, z)
+            sweepresults.save_iteration(TH_configuration, i, j)
+            # write scale inputs
             if neutronics == True:
-                write_scale_inputs(r, pd_ratio, c, raw_matlib)
-
+                scale_inputs.append(write_scale_inputs(r, pd_ratio, c,\
+                    raw_matlib))
+    
     if neutronics == True:
         pool_size = 8
         pool = Pool(pool_size) 
@@ -101,7 +139,8 @@ site-packages/pyne/nuc_data.h5"
             for j in range(N):
                 run_scale(R, PD, i, j)
 
-    sweepresults.save_iteration(TH_configuration, i, j)
+        run_scale()
+        save_keff(N, sweepresults, R, PD)
 
     # get minimum data        
     sweepresults.get_min_data()
