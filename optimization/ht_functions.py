@@ -291,13 +291,14 @@ class ParametricSweep():
         self.N = N
         self.select_AR = select_AR
         for key in self.data:
-            self.data[key] = np.empty([N,N])
+                self.data[key] = np.empty([N,N])
 
     def save_iteration(self, iteration, i, j):
         """ Save the data from each iteration of the parametric sweep. 
         """
         for key in self.data.keys():
-            self.data[key][i][j] = iteration.__dict__[key]
+            if key != 'keff':
+                self.data[key][i][j] = iteration.__dict__[key]
 
     def get_min_data(self):
         """ After the parametric sweep is complete, find the minimum calculated
@@ -380,6 +381,7 @@ class ParametricSweep():
         plt.title(self.titles[key][0])
         
         # Add a color bar which maps values to colors.
-        fig.colorbar(surf, shrink=0.5, aspect=5, format='%.0e')
+        fig.colorbar(surf, shrink=0.5, aspect=5, format='%.0e',\
+                spacing='proportional')
         
         return plt
