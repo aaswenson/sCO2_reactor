@@ -82,22 +82,22 @@ def save_keff(N, saveiterations, R, PD):
                                              float(keff[2])
                       break
 
-def sweep_configs(R, PD, z, c, N, neutronics):
+def sweep_configs(radii, pds, z, c, N, neutronics, run_neutronics):
     """Perform parametric sweep through pin cell geometric space.
     """
     # calculate appropriate step sizes given range
-    D_step = (diams[1] - diams[0]) / N
+    R_step = (radii[1] - radii[0]) / N
     PD_step = (pds[1] - pds[0]) / N
     
     # ranges for diameter and pitch/diameter ratio
-    D_array = np.arange(diams[0], diams[1], D_step)
+    R_array = np.arange(radii[0], radii[1], R_step)
     PD_array = np.arange(pds[0], pds[1], PD_step)
 
     # create parameter mesh
-    D_mesh, PD_mesh = np.meshgrid(D_array, PD_array)
+    R_mesh, PD_mesh = np.meshgrid(R_array, PD_array)
 
     # initialize object to save sweep results
-    sweepresults = ParametricSweep(D_mesh, PD_mesh, N)
+    sweepresults = ParametricSweep(R_mesh, PD_mesh, N)
     
     # Initialize material libraries.
     path_to_compendium = "/home/alex/.local/lib/python2.7/\
@@ -112,33 +112,25 @@ site-packages/pyne/nuc_data.h5"
     # sweep through parameter space, calculate min mass    
     for i in range(N):
         for j in range(N):
-            flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z)
+            # get geometry
+            r = R_mesh[i,j]
+            pd_ratio = PD_mesh[i,j]
+            
+            flowdata = Flow(r, pd_ratio, c, z)
             flow_calc(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
-            # write MCNP input file
             
-            infile = PinCellMCNP('hex',D[i,j]*50 , PD[i,j], c * 100, z *
-                    100)
-            infile.write_fuel_string(0.96, ('Nitrogen', 1), raw_matlib)
-            infile.write_mat_string('Steel, Stainless 316', 'Carbon Dioxide',
-                raw_matlib)
-            infile.write_input([5000, 25, 40])
-    
-            r = R[i,j]; pd_ratio = PD[i,j]
-            TH_configuration = THCalc(r, pd_ratio, c, z)
-            sweepresults.save_iteration(TH_configuration, i, j)
             # write scale inputs
             if neutronics == True:
                 scale_inputs.append(write_scale_inputs(r, pd_ratio, c,\
                     raw_matlib))
     
     if neutronics == True:
-        pool_size = 8
-        pool = Pool(pool_size) 
         for i in range(N):
             for j in range(N):
                 run_scale(R, PD, i, j)
 
+    if run_neutronics == True:
         run_scale()
         save_keff(N, sweepresults, R, PD)
 
@@ -161,9 +153,11 @@ if __name__ == '__main__':
                         help="parameter parameter to plot")
     parser.add_argument("-i", action='store_true', dest='show',
                         default=False, help="--display plot")
-    parser.add_argument("--n", action='store_true', dest='neutronics',
-            default=False, help="--write scale inputs and run reactor physics\
+    parser.add_argument("-n", action='store_true', dest='neutronics',
+            default=False, help="write scale inputs and run reactor physics\
 calc")
+    parser.add_argument("-r", action='store_true', dest='run_neutronics',
+            default=False, help="run reactor_physics calc")
 
     args = parser.parse_args()
 
@@ -173,10 +167,10 @@ calc")
         sys.exit()
     
 
-    sweepresults = sweep_configs((args.d_lower, args.d_upper),
+    sweepresults = sweep_configs((args.r_lower, args.r_upper),
                                  (args.pd_lower, args.pd_upper),
                                   args.z, args.clad_t, args.steps,
-                                  args.neutronics)
+                                  args.neutronics, args.run_neutronics)
     
     if args.plotkey:
         plt = plot(sweepresults, args.plotkey)
