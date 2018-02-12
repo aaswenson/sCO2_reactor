@@ -25,6 +25,9 @@ from mcnp_inputs import PinCellMCNP
 from scale_inputs import PinCellSCALE
 from physical_constants import rho_fuel
 
+models = ['mcnp', 'scale']
+model_objects = {'mcnp': PinCellMCNP, 'scale' : PinCellSCALE}
+
 def load_pyne_matlib():
 
     # Initialize material libraries.
@@ -38,12 +41,11 @@ site-packages/pyne/nuc_data.h5"
                          nucpath="/material_library/nucid")
     return raw_matlib
 
-        
-def write_scale_inputs(r, pd_ratio, c, pyne_matlib):
+def write_inputs(r, pd_ratio, c, pyne_matlib):
     """
     """
     # write scale input file
-    input = PinCellSCALE(r, pd_ratio, c)
+    input = PinCellInput(r, pd_ratio, c)
     input.write_fuel_string(0.6, ('Nitrogen', 1), pyne_matlib)
     input.write_mat_string('Inconel-718', 'Carbon Dioxide', pyne_matlib)
     infilename = input.write_input()
@@ -66,12 +68,12 @@ def run_scale():
     # run jobs
     pool.map(work, tasks)
 
-def save_keff(N, saveiterations, R, PD):
+def save_keff_scale(N, saveiterations, R, PD):
     
     for i in range(N):
       for j in range(N):
           # get name of output file
-          r = R[i,j] * 100; pd = PD[i,j]
+          r = R[i,j]*100; pd = PD[i,j]
           ofilename = "./inputs/leakage_{0}_{1}.out".format(round(r, 5),
                                                         round(pd, 5))
           with open(ofilename, 'r') as results:
@@ -120,19 +122,13 @@ site-packages/pyne/nuc_data.h5"
             flow_calc(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
             
-            # write scale inputs
-            if neutronics == True:
-                scale_inputs.append(write_scale_inputs(r, pd_ratio, c,\
-                    raw_matlib))
     
     if neutronics == True:
-        for i in range(N):
-            for j in range(N):
                 run_scale(R, PD, i, j)
 
     if run_neutronics == True:
         run_scale()
-        save_keff(N, sweepresults, R, PD)
+        save_keff_scale(N, sweepresults, R, PD)
 
     # get minimum data        
     sweepresults.get_min_data()
@@ -158,6 +154,11 @@ if __name__ == '__main__':
 calc")
     parser.add_argument("-r", action='store_true', dest='run_neutronics',
             default=False, help="run reactor_physics calc")
+    parser.add_argument("--save", action='store_true', dest='saveplot',
+            default=False, help="--save, save plot as png")
+    # select the version of the pin cell
+    parser.add_argument("-m", "--model", type=str, default=models[0], required=False, choices=models,
+                        help="Allows selection for which model to generate an input file. ")
 
     args = parser.parse_args()
 
@@ -166,6 +167,7 @@ calc")
               "diameter! Set min PD > 1!")
         sys.exit()
     
+    PinCellInput = model_objects[args.model]
 
     sweepresults = sweep_configs((args.r_lower, args.r_upper),
                                  (args.pd_lower, args.pd_upper),

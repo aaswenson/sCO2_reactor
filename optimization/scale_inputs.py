@@ -6,7 +6,6 @@ import math
 import sys
 import physical_constants as pc
 
-
 class PinCellSCALE:
     """Class to write MCNP input files for pin cell modeling in an infinite
     lattice (in the x-y directions).
@@ -16,7 +15,7 @@ class PinCellSCALE:
 
     # base template string modified by the methods below
     base_string = Template("""=t-newt
-first-input-fiile
+Scale pin cell study radius:${radius} cm
 v5-44
 
 read comp
@@ -24,14 +23,14 @@ ${mat}
 end comp
 
 read celldata
-latticecell squarepitch hpitch=0.7 3 fuelr=0.5 1 cladr=0.55 2 end
+latticecell squarepitch hpitch=${hpitch} 3 fuelr=${fuelr} 1 cladr=${c_rad} 2 end
 end celldata
 
 read model
 
 read parameters
   run=yes
-  epseigen=0.01
+  epseigen=0.001
   converge=mix
   collapse=yes
   drawit=yes
@@ -67,7 +66,7 @@ media 3 1 11
 media 2 1 12 -11
 media 1 1 13 -12
 
-boundary 13 20 20
+boundary 13 40 40
 end geometry
 
 end model
@@ -79,12 +78,28 @@ end
         """
         self.pd = PD
         self.r = radius * 100
-        self.pitch = (self.r + clad_t) * PD * 2.0
         self.c = clad_t * 100
+        self.pitch = (self.r + self.c) * PD * 2.0
+    
+    def equivalent_fuel_ratio(self):
+        """
+        """
+        A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
+                      (self.r + self.c) ** 2 * math.pi
+        A_flow = self.r**2 * math.pi
+        A_total = A_fuel + A_flow
+        A_clad = math.pi*((self.r + self.c)**2 - self.r**2)
+        
+        # get equivalent fuel ratio
+        self.fuelr = math.sqrt(A_fuel / math.pi)
+        self.hpitch = math.sqrt(A_total) / 2.0
+        self.cladr = math.sqrt(A_clad / math.pi + self.fuelr**2)\
+                - self.fuelr
     
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.
         """
+        kg_m3_to_g_cc = 0.001
         # get the fuel-bonded compound
         const_mat = matlib[fuel_type[0]]
         const_mat.expand_elements().to_atom_frac()
@@ -94,16 +109,16 @@ end
         constafrac = 1 - Uafrac
 
         afrac = Material({'U238':1-enrich, 'U235':enrich},-1.0).to_atom_frac()
-        
         # account for uranium atom fraction
         afrac.update({n: Uafrac*afrac[n] for n in afrac.keys()})
-        
+         
         # add fuel-bonded compound, adjusted for U:compound
         for isotope in const_mat:
             afrac.update({isotope:const_mat[isotope]*constafrac})
-
+        
         self.fuel = Material()
         self.fuel.from_atom_frac(afrac)
+        
         
         self.fuel.metadata['mat_number'] = self.mat_numbers['fuel']
 
@@ -111,7 +126,6 @@ end
         """Write the material data.
         """
         kg_m3_to_g_cc = 0.001
-        self.mat_string = self.fuel.scale(1847)
         
         self.cool = matlib[coolant_mat].collapse_elements([])
         self.clad = matlib[clad_mat].collapse_elements([])
@@ -122,13 +136,14 @@ end
         # add material numbers
         self.cool.metadata['mat_number'] = self.mat_numbers['cool']
         self.clad.metadata['mat_number'] = self.mat_numbers['clad']
-
-        self.fuel.density = pc.rho_fuel*kg_m3_to_g_cc
+        
         self.cool.density = pc.rho_cool*kg_m3_to_g_cc
         self.clad.density = pc.rho_W*kg_m3_to_g_cc
-        
-        self.mat_string += self.clad.scale(1400) +\
-                           self.cool.scale(1000)
+        self.fuel.density = pc.rho_fuel*kg_m3_to_g_cc
+
+        self.mat_string = self.fuel.scale(300)
+        self.mat_string += self.clad.scale(300) +\
+                           self.cool.scale(300)
     
     def write_input(self):
         """ Write MCNP6 input files.
@@ -136,18 +151,19 @@ end
         the template input string. It writes a bare and reflected core input file
         for each core radius.
         """
+        self.equivalent_fuel_ratio()
         templ = self.base_string
         file_string = templ.substitute(
-                               cool_rho = self.cool.density,
-                               clad_rho = self.clad.density,
-                               fuel_rho = self.fuel.density,
                                radius = self.r,
                                clad_radius = self.r + self.c,
                                pitch = self.pitch,
                                mat = self.mat_string,
+                               hpitch = self.hpitch,
+                               fuelr = self.fuelr,
+                               c_rad = self.cladr,
                                comm = "$")
         # write the file
-        ifile_name = "./inputs/leakage_{0}_{1}.inp".format(round(self.r, 5),
+        ifile_name = "./inputs/scale/leakage_{0}_{1}.inp".format(round(self.r, 5),
                                               round(self.pd, 5))
         ifile = open(ifile_name, 'w')
         ifile.write(file_string)

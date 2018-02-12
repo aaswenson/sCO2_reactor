@@ -17,40 +17,38 @@ class PinCellMCNP:
 
     # base template string modified by the methods below
     base_string = Template("""\
-MCNP6 pin cell study radius:${radius} cm, height:${height} cm. 
+MCNP6 pin cell study radius:${radius} cm
 c Cell Card
-1 3 -${cool_rho} -1 4 -5 imp:n=1   ${comm} coolant channel
-2 2 -${clad_rho} 1 -2 4 -5 imp:n=1 ${comm} cladding
-3 1 -${fuel_rho} -3 2 4 -5 imp:n=1 ${comm} fuel
+1 3 ${cool_rho} -1 4 -5 imp:n=1   ${comm} coolant channel
+2 2 ${clad_rho} 1 -2 4 -5 imp:n=1 ${comm} cladding
+3 1 ${fuel_rho} -3 2 4 -5 imp:n=1 ${comm} fuel
 99 0 5:-4:(3 -5 4) imp:n=0  ${comm} outside world
  
 c Surface Card
 1 CZ ${radius}
 2 CZ ${clad_radius}
 3+ rhp 0 0 -10000 0 0 100000 ${pitch} 0
-4 PZ -${half_height}
-5 PZ ${half_height}
+4+ PZ -0.5
+5+ PZ 0.5
 
 c Data Card
 ${mat}\
 kcode ${n_per_cycle} 1 ${non_active_cycles} ${total_cycles}
-ksrc  1 1 1
-     -1 -1 -1 
-     1 -1 1
-     -1 1 1
-     1 1 -1
+ksrc  0 ${ksrc_radius} 0
+      0 -${ksrc_radius} 0
+      ${ksrc_radius} 0 0
+      -${ksrc_radius} 0 0
 mode n
 print
 """)
 
-    def __init__(self, shape, radius, PD, clad_t, core_z):
+    def __init__(self, radius, PD, clad_t):
         """Initialize parameters.
         """
-        self.r = radius
-        self.pitch = (radius + clad_t) * PD * 2.0
-        self.c = clad_t
-        self.z = core_z
-        self.type = shape
+        self.r = radius * 100
+        self.c = clad_t * 100
+        self.PD = PD
+        self.pitch = (self.r + self.c) * self.PD * 2.0
     
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.
@@ -100,7 +98,7 @@ print
         self.mat_string += self.clad.mcnp(frac_type='atom') +\
                            self.cool.mcnp(frac_type='atom')
     
-    def write_input(self, kcode_params):
+    def write_input(self, kcode_params=[10000, 15, 60]):
         """ Write MCNP6 input files.
         This function writes the MCNP6 input files for the leakage experiment using
         the template input string. It writes a bare and reflected core input file
@@ -108,22 +106,21 @@ print
         """
         templ = self.base_string
         file_string = templ.substitute(
-                               cool_rho = self.cool.density,
-                               clad_rho = self.clad.density,
-                               fuel_rho = self.fuel.density,
+                               cool_rho = abs(self.cool.number_density() / 1e24),
+                               clad_rho = abs(self.clad.number_density() / 1e24),
+                               fuel_rho = abs(self.fuel.number_density() / 1e24),
                                radius = self.r,
                                clad_radius = self.r + self.c,
                                pitch = self.pitch,
-                               half_height = self.z / 2.0,
-                               height = self.z,
+                               ksrc_radius = self.r + self.c + 0.01,
                                mat = self.mat_string,
                                n_per_cycle = kcode_params[0],
                                non_active_cycles = kcode_params[1],
                                total_cycles = kcode_params[2],
                                comm = "$")
         # write the file
-        ifile = open("./pin_cell/inputs/leakage_{0}_{1}.i".
-                format(round(self.r, 5), round(self.z, 5)),'w')
+        ifile = open("./inputs/mcnp/leakage_{0}_{1}.i".
+                format(round(self.r, 5), round(self.PD, 5)),'w')
         ifile.write(file_string)
         ifile.close()
 
