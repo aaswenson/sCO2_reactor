@@ -13,7 +13,7 @@ import argparse
 from ht_functions import Flow, flow_calc
 
 
-def oneD_flow_modeling(diameter, PD, L, c):
+def oned_flow_modeling(diameter, PD, L, c):
     """1D calculation.
     This function produces a valid, coolable reactor design given the following
     arguments:
@@ -34,11 +34,14 @@ def oneD_flow_modeling(diameter, PD, L, c):
     test.calc_reactor_mass()
     test.calc_aspect_ratio()
 
+    return test
+
+def print_results(flowdata):
     # collect and print the results
     data = test.__dict__
 
-    data = {str(round(data[key], 3)) for key in sorted(data.keys())}
-    print(data)
+    print([(key, str(round(data[key], 3))) for key in sorted(data.keys())])
+
 
 
 if __name__ == '__main__':
@@ -57,5 +60,7 @@ if __name__ == '__main__':
         diameter!, set PD > 1")
         sys.exit()
     # perform calculation
-    oneD_flow_modeling(args.diameter, args.PD, args.core_z,
-                       args.clad_t)
+    test = oned_flow_modeling(args.diameter, args.PD, args.core_z,
+                              args.clad_t)
+
+    print_results(test)

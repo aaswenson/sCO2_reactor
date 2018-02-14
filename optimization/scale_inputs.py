@@ -87,14 +87,13 @@ end
         A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
                       (self.r + self.c) ** 2 * math.pi
         A_flow = self.r**2 * math.pi
-        A_total = A_fuel + A_flow
         A_clad = math.pi*((self.r + self.c)**2 - self.r**2)
+        A_total = A_fuel + A_flow + A_clad
         
         # get equivalent fuel ratio
         self.fuelr = math.sqrt(A_fuel / math.pi)
         self.hpitch = math.sqrt(A_total) / 2.0
-        self.cladr = math.sqrt(A_clad / math.pi + self.fuelr**2)\
-                - self.fuelr
+        self.cladr = math.sqrt((A_clad / math.pi) + self.fuelr**2)
     
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.

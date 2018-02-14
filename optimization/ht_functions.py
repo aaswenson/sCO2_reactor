@@ -1,4 +1,6 @@
-# Other Imports
+# Other imports
+import json
+import time
 import math
 import numpy as np
 import operator
@@ -349,40 +351,17 @@ class ParametricSweep():
             + str(self.minPD) + "[-]."
         print(outstring)
 
-    def plot(self, D, PD, key):
-        """Produce surface plot of the flow results as function of PD and coolant
-        channel diameter.
+    def data_to_json(self, r, pd):
+        """Save data to json file
         """
-        # get parametric sweep data
-        M = self.data[key]
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        surf = ax.plot_surface(D, PD, M, 
-                               cmap=cm.viridis, linewidth=0,
-                               vmin=0, vmax=np.nanmax(M),
-                               antialiased=False)
+        timestamp = time.strftime("%X").replace(':','.')
+        date = time.strftime("%x").replace('/','.')
+        json_name = "results_" + timestamp + date + '.json'
 
-        # set x/y axis labels, ticks
-        ax.set_xlabel("Coolant Channel Diameter [m]", fontsize=7)
-        plt.xticks(rotation=25, fontsize=6)
-        ax.set_ylabel("Fuel Pitch to Coolant D Ratio [-]", fontsize=7)
-        plt.yticks(rotation=25, fontsize=6)
-        ax.set_zlabel(self.titles[key][1], fontsize=7)
-         
-        # Customize the z axis.
-        ax.set_zlim(np.nanmin(M),np.nanmax(M))
-        ax.zaxis.set_major_locator(LinearLocator(10))
-        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-        
-        # edit z tick labels
-        for t in ax.zaxis.get_major_ticks(): t.label.set_fontsize(6)
-        niceMathTextForm = ScalarFormatter(useMathText=True)
-        ax.w_zaxis.set_major_formatter(niceMathTextForm)
-        ax.ticklabel_format(axis="z", style="sci", scilimits=(0,0))
-        plt.title(self.titles[key][0])
-        
-        # Add a color bar which maps values to colors.
-        fig.colorbar(surf, shrink=0.5, aspect=5, format='%.0e',\
-                spacing='proportional')
-        
-        return plt
+        save_data = {'r':r.tolist(), 'pd':pd.tolist()}
+
+        for item in self.data:
+            save_data.update({item:self.data[item].tolist()})
+        # dump data to json file
+        with open(json_name, 'w') as fp:
+            json.dump(save_data, fp, sort_keys=True, indent=4)

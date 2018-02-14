@@ -11,8 +11,6 @@ Functions contained in this module:
 import numpy as np
 import argparse
 import sys
-import os
-import tempfile
 import subprocess
 import multiprocessing as mp
 import glob
@@ -20,10 +18,10 @@ import itertools
 from pyne.material import MaterialLibrary
 # Import TH functions
 from ht_functions import Flow, ParametricSweep, flow_calc
+from flow_iteration import oned_flow_modeling
 from plot import plot
 from mcnp_inputs import PinCellMCNP
 from scale_inputs import PinCellSCALE
-from physical_constants import rho_fuel
 
 models = ['mcnp', 'scale']
 model_objects = {'mcnp': PinCellMCNP, 'scale' : PinCellSCALE}
@@ -56,11 +54,10 @@ def work(in_file):
     """Defines work unit on an input file"""
     subprocess.call(['batch6.1', '{}'.format(in_file)])
 
-
 def run_scale():
     """
     """
-    inputs = './inputs/*inp'
+    inputs = './inputs/scale/*inp'
     tasks = glob.glob(inputs)
     # set up parallel pool
     count = mp.cpu_count()
@@ -74,12 +71,13 @@ def save_keff_scale(N, saveiterations, R, PD):
       for j in range(N):
           # get name of output file
           r = R[i,j]*100; pd = PD[i,j]
-          ofilename = "./inputs/leakage_{0}_{1}.out".format(round(r, 5),
+          ofilename = "./inputs/scale/leakage_{0}_{1}.out".format(round(r, 5),
                                                         round(pd, 5))
           with open(ofilename, 'r') as results:
               for line in results:
                   if 'k-eff = ' in line:
                       keff = line.split()
+                      print(keff[2])
                       saveiterations.data['keff'][i,j] =\
                                              float(keff[2])
                       break
@@ -118,22 +116,22 @@ site-packages/pyne/nuc_data.h5"
             r = R_mesh[i,j]
             pd_ratio = PD_mesh[i,j]
             
-            flowdata = Flow(r, pd_ratio, c, z)
-            flow_calc(flowdata)
+            flowdata = oned_flow_modeling(r, pd_ratio, c, z)
             sweepresults.save_iteration(flowdata, i, j)
-            
     
-    if neutronics == True:
-                run_scale(R, PD, i, j)
+            if neutronics == True:
+                write_inputs(r, pd_ratio, c, raw_matlib)
 
     if run_neutronics == True:
         run_scale()
-        save_keff_scale(N, sweepresults, R, PD)
+        save_keff_scale(N, sweepresults, R_mesh, PD_mesh)
 
     # get minimum data        
     sweepresults.get_min_data()
     sweepresults.disp_min_mass()
     
+    sweepresults.data_to_json(R_mesh, PD_mesh)
+        
     return sweepresults
 
 if __name__ == '__main__':
