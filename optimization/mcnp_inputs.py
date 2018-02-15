@@ -33,6 +33,7 @@ c Surface Card
 
 c Data Card
 ${mat}\
+${VOL}
 kcode ${n_per_cycle} 1 ${non_active_cycles} ${total_cycles}
 ksrc  0 ${ksrc_radius} 0
       0 -${ksrc_radius} 0
@@ -49,7 +50,17 @@ print
         self.c = clad_t * 100
         self.PD = PD
         self.pitch = (self.r + self.c) * self.PD * 2.0
+
+    def vol_card(self):
+        """ Generate cell volumes.
+        """
+        cool_vol = self.r**2 * math.pi
+        fuel_vol = math.sqrt(3)*self.pitch**2 / 2.0 -\
+            (self.r + self.c) ** 2 * math.pi
+        clad_vol = ((self.r + self.c)**2 - self.r**2) * math.pi
     
+        self.vol_str = "VOL {0} {1} {2}".format(cool_vol, clad_vol, fuel_vol)
+
     def write_fuel_string(self, enrich, fuel_type, matlib):
         """Get fuel material, enrich it and write fuel string.
         """
@@ -104,6 +115,7 @@ print
         the template input string. It writes a bare and reflected core input file
         for each core radius.
         """
+        self.vol_card()
         templ = self.base_string
         file_string = templ.substitute(
                                cool_rho = abs(self.cool.number_density() / 1e24),
@@ -114,6 +126,7 @@ print
                                pitch = self.pitch,
                                ksrc_radius = self.r + self.c + 0.01,
                                mat = self.mat_string,
+                               VOL = self.vol_str,
                                n_per_cycle = kcode_params[0],
                                non_active_cycles = kcode_params[1],
                                total_cycles = kcode_params[2],
