@@ -16,23 +16,6 @@ def fuel_cond(T):
 
     return kc
 
-
-###############################################################################
-#                                                                             #
-#                     Given Parameters From Power Cycle                       #
-#                                                                             #
-###############################################################################
-m_dot = 0.75  # coolant flow [kg/s]
-Q_therm = 131000  # core thermal power [W]
-T_in = 962.9  # core inlet temp [K] (from power cycle model)
-T_out = 1100  # core outlet temp [K] (from power cycle model)
-T_bulk = T_in + (T_out - T_in) / 2  # bulk coolant temp. [K]
-rho_cool = 87.13  # coolant density [kg/m^3]
-Cp_cool = 1274  # coolant specific heat [J/kg-k]
-mu = 0.00004306  # coolant viscosity [kg/m-s]
-P_in = 1.79064e7  # inlet pressure [Pa]
-P_out = 1.74229e7  # outlet pressure [Pa]
-
 ###############################################################################
 #                                                                             #
 #                            Literature Values                                #
@@ -53,7 +36,5 @@ fuel_frac = 0.6  # fraction of fuel in CERMET
 #                   Calculated Parameters From Power Cycle                    #
 #                                                                             #
 ###############################################################################
-dp_allowed = P_in - P_out  # pressure drop limit [Pa]
-Pr = Cp_cool * mu / k_cool  # coolant Prandtl numbe[-]
 # mixed density for CERMET fuel
 rho_fuel = fuel_frac*rho_UN + (1-fuel_frac)*rho_W

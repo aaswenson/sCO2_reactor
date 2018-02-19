@@ -16,7 +16,7 @@ from ht_functions import Flow, ParametricSweep, oned_flow_modeling
 from plot import plot
 
 
-def sweep_geometric_configs(diams, pds, z, c, N):
+def sweep_geometric_configs(diams, pds, z, c, N, properties):
     """Perform parametric sweep through pin cell geometric space. Calculate the
     minimum required mass for TH purposes at each point.
     """
@@ -35,12 +35,11 @@ def sweep_geometric_configs(diams, pds, z, c, N):
     # sweep through parameter space, calculate min mass
     for i in range(N):
         for j in range(N):
-            flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z)
+            flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z, properties)
             oned_flow_modeling(flowdata)
             sweepresults.save_iteration(flowdata, i, j)
 
     sweepresults.get_min_mass()
-    sweepresults.disp_min_mass()
     
     return sweepresults
 
@@ -65,11 +64,15 @@ if __name__ == '__main__':
               "diameter! Set min PD > 1!")
         sys.exit()
     
+    pc_data = PowerCycleSweep('test_params.txt')
+    pc_data.load_params()
 
-    sweepresults = sweep_configs((args.d_lower, args.d_upper),
-                                 (args.pd_lower, args.pd_upper),
-                                  args.z, args.clad_t, args.steps)
-    
+    sweepresults = sweep_geometric_configs((args.d_lower, args.d_upper),
+                                           (args.pd_lower, args.pd_upper),
+                                            args.z, args.clad_t, args.steps,
+                                            pc_data.params[0]['bulk'])
+    sweepresults.disp_min_mass()
+
     if args.plotkey:
         plt = plot(sweepresults, args.plotkey)
         savename = args.plotkey + '.png'
