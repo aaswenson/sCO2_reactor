@@ -36,7 +36,7 @@ class PowerCycleSweep:
         with open(self.filename, 'r') as fp:
             next(fp)
             for line in fp:
-                data = line.split()
+                data = line.split(',')
                 inlet, outlet, bulklet = self.process_params(data)        
                 # store parameters
                 self.params.append({'in': inlet,
@@ -83,12 +83,14 @@ class PowerCycleSweep:
             x.append(pc_config['bulk'].Q_therm)
             y.append(pc_config['bulk'].mass)
         
-        plt.plot(x, y)
+        plt.scatter(x, y)
+        plt.title("Mass vs. Q_reactor (Thermal considerations only)")
+        plt.xlabel("Q_reactor [W]")
+        plt.ylabel("Mass [kg]")
         plt.show()
 
 if __name__=='__main__':
     
-    pc_data = PowerCycleSweep('CycleParameters.txt')
+    pc_data = PowerCycleSweep('CycleParameters.csv')
     pc_data.load_params()
-    print(pc_data.params)
     pc_data.get_minimum_mass((0.005, 0.015), (1.01, 2), 0.15, 0.00031, 20)
