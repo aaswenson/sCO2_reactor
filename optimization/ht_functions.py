@@ -1,4 +1,6 @@
-# Other Imports
+# Other imports
+import json
+import time
 import math
 import numpy as np
 import operator
@@ -228,19 +230,17 @@ class Flow:
                   self.v * self.v / (2*self.D_e)
 
     def adjust_dp(self):
-        """Check for pressure constraint. This method calls calc_dp() to get
-        the pressure drop in the current condition. It checks the dp against the
-                self.r = radius
-        self.PD = PD
-power cycle-constrained allowable dp. If the pressure is too high, it
-        adjusts N_channels to the min N_channels that satisfies the dp
-        constraint.
+    """Check for pressure constraint. This method calls calc_dp() to get
+    the pressure drop in the current condition. It checks the dp against the
+    power cycle-constrained allowable dp. If the pressure is too high, it
+    adjusts N_channels to the min N_channels that satisfies the dp
+    constraint.
 
-        Modified Attributes:
-        --------------------
-            guess_channels: guess number of fuel channels [-]
-            N_channels: number of fuel channels [-]
-        """
+    Modified Attributes:
+    --------------------
+        guess_channels: guess number of fuel channels [-]
+        N_channels: number of fuel channels [-]
+    """
 
         self.calc_dp()
         while self.dp > self.fps.dP_allowed:
@@ -381,3 +381,18 @@ class ParametricSweep():
             + "[kg]) " + " occurs at r = " + str(self.minD) + "[m] & PD = "\
             + str(self.minPD) + "[-]."
         print(outstring)
+
+    def data_to_json(self, r, pd):
+        """Save data to json file
+        """
+        timestamp = time.strftime("%X").replace(':','.')
+        date = time.strftime("%x").replace('/','.')
+        json_name = "results_" + timestamp + date + '.json'
+
+        save_data = {'r':r.tolist(), 'pd':pd.tolist()}
+
+        for item in self.data:
+            save_data.update({item:self.data[item].tolist()})
+        # dump data to json file
+        with open(json_name, 'w') as fp:
+            json.dump(save_data, fp, sort_keys=True, indent=4)
