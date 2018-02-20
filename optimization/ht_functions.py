@@ -144,6 +144,7 @@ class Flow:
         self.A_flow = self.r_channel ** 2 * math.pi
         self.A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
             (self.r_channel + self.c) ** 2 * math.pi
+        self.A_clad = ((self.r_channel + self.c)**2 - self.r_channel**2)*math.pi
         self.D_e = 2.0 * self.r_channel
 
     def characterize_flow(self):

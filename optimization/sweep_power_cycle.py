@@ -27,7 +27,7 @@ class FlowProperties:
         self.m_dot = mass_flow
         self.Q_therm = thermal_power
         self.T = float(T)
-        self.P = float(P)
+        self.P = float(P) * 1e3
         self.secondary_properties()
         self.dP_allowed = 0
 
@@ -139,8 +139,9 @@ class PowerCycleSweep:
                           index(min(self.cycle_parameters['mass']))
         
         reactor = self.cycle_parameters[pc_min_idx]['TH_results']
-        
-        self.write_mcnp_input(reactor)
+        print(reactor.__dict__)
+        print(reactor.fps.__dict__)
+        #self.write_mcnp_input(reactor)
 
     def write_mcnp_input(self, TH_reactor):
         """ Write the mcnp input.
@@ -156,7 +157,7 @@ class PowerCycleSweep:
         """
         res = np.polyfit(self.cycle_parameters['Q_therm'], 
                          self.cycle_parameters['mass'],
-                         1)
+                         2)
 
         return res
     
@@ -177,5 +178,6 @@ if __name__=='__main__':
     pc_data.load_params()
     pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.15, 0.00031, 5)
     res = pc_data.fit_curve()
-    pc_data.plot('eta', 'mass')
+    plt = pc_data.plot('Q_therm', 'mass')
+    plt.show()
     print(res)
