@@ -105,7 +105,7 @@ class Flow:
     q_bar = 0  # axially-averaged volumetric generation
     q_per_channel = 0  # generation per fuel channel
 
-    def __init__(self, diameter, PD, c, L, properties):
+    def __init__(self, radius, PD, c, L, properties):
         """Initialize the flow iteration class.
 
         Initialized Attributes:
@@ -116,7 +116,7 @@ class Flow:
             L: length of core [m]
         """
         self.pd_ratio = PD
-        self.r_channel = diameter / 2.0
+        self.r_channel = radius
         self.c = c
         self.pitch = (self.r_channel + self.c) * self.pd_ratio * 2
         self.L = L
@@ -343,10 +343,10 @@ class ParametricSweep():
         """
         self.N = N
         # size of formats list
-        N_cats = len(self.titles.keys()) + 2  # add 2 for r,pd
+        N_cats = len(self.titles.keys())
         self.data = np.zeros(N*N, dtype={'names': list(self.titles.keys()) +
-                                         ['r', 'pd'],
-                                         'formats': ['f8']*N_cats})
+                                         ['FlowData'],
+                                         'formats': ['f8']*N_cats + ['O']})
 
     def save_iteration(self, iteration, i, j, N):
         """ Save the data from each iteration of the parametric sweep. 
@@ -354,8 +354,7 @@ class ParametricSweep():
         # 2D -> 1D index
         idx = i + j*N
         # store r, pd
-        self.data[idx]['r'] = iteration.r_channel
-        self.data[idx]['pd'] = iteration.pd_ratio
+        self.data[idx]['FlowData'] = iteration
         for key in self.titles.keys():
             self.data[idx][key] = iteration.__dict__[key]
 
@@ -365,12 +364,10 @@ class ParametricSweep():
         """
         # search the results for minimum-mass configuration
         self.min_idx = list(self.data['mass']).index(min(self.data['mass']))
-
-        # get data for min mass config
-        self.min_mass = self.data[self.min_idx]['mass']
-
+        min_flow_data = self.data[self.min_idx]['FlowData']
+        
         # return the min_idx to get other results at minimum config
-        return self.min_idx
+        return min_flow_data
 
     def disp_min_mass(self):
         """ Display the minimum mass configuration.

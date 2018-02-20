@@ -8,11 +8,12 @@ class FlowProperties:
     fundamental props.
     """
 
-    def __init__(self, T, P, mass_flow, thermal_power):
+    def __init__(self, T, P, mass_flow, thermal_power, efficiency):
         """Inialize FlowProperties class and load required flow property data.
 
         Initialized Attributes:
         -----------------------
+            eta: (float) cycle efficiency [-]
             m_dot: (float) mass flow rate [kg/s]
             Q_therm: (float) required thermal reactor power [W]
             T: (float) bulk coolant temperature [K]
@@ -20,6 +21,7 @@ class FlowProperties:
             dp_allowed: (float) power-cycle constrained dp [Pa]
             mass: (float) required reactor mass
         """
+        self.eta = efficiency
         self.m_dot = mass_flow
         self.Q_therm = thermal_power
         self.T = float(T)
@@ -49,11 +51,16 @@ class FlowProperties:
         self.Pr = self.Cp * self.mu / self.k_cool
 
 class PowerCycleSweep:
-    
+    """Load power cycle data and calculate minimum-mass reactor for every power
+    cycle configuration.
+    """
     def __init__(self, power_cycle_input):
+        """
+        """
         self.filename = power_cycle_input
-        self.names = ['Q_therm', 'm_dot', 'T', 'P', 'mass', 'flow_props']
-        self.types = ['f8']*5 + ['O', 'O']
+        self.names = ['Q_therm', 'm_dot', 'T', 'P', 'eta', 'mass', 'TH_results',
+                'flow_props']
+        self.types = ['f8']*6 + ['O', 'O']
 
     def load_params(self):
         """Load power cycle parameters.
@@ -74,7 +81,7 @@ class PowerCycleSweep:
                 data = line.split(',')
                 bulklet = self.process_params(data)        
                 # store float parameters
-                for key in self.names[0:3]:
+                for key in self.names[0:5]:
                     self.cycle_parameters[key][idx] = bulklet.__dict__[key]
                     self.cycle_parameters['flow_props'][idx] = bulklet
                     
@@ -84,19 +91,32 @@ class PowerCycleSweep:
     def process_params(self, data):
         """Calculate secondary properties for inlet and outlet conditions.
         Calculate bulk-averaged properties/secondary properties.
+        
+        Modified Attributes:
+        --------------------
+            None
+        Arguments:
+        ----------
+            data: (list) one line of power cycle parameter csv file
+        Returns:
+        --------
+            bulklet: (FlowProperties class) object with primary and secondary
+            flow properties required for TH analysis.
         """
+        # load data from input line
         T_in = float(data[0]); T_out = float(data[1])
         P_in = float(data[2]); P_out = float(data[3])
         m_dot = float(data[4])
+        eta = float(data[5])
         Q_therm = float(data[6])
 
-        dP = P_in - P_out
-        # bulk-averaged
+        # bulk-averaged flow properties
         T_bulk = (T_in + T_out)/ 2.0
         P_bulk = (P_in + P_out) / 2.0
-        # get bulk cond
-        bulklet = FlowProperties(T_bulk, P_bulk, m_dot, Q_therm)
-        bulklet.dP_allowed = dP
+        # get bulk secondary conditions
+        bulklet = FlowProperties(T_bulk, P_bulk, m_dot, Q_therm, eta)
+        # pressure drop limit 
+        bulklet.dP_allowed = P_in - P_out
         
         return bulklet
 
@@ -106,9 +126,18 @@ class PowerCycleSweep:
         for pc_config in self.cycle_parameters:
             sweepresults = sweep_geometric_configs(Rs, PDs, z, c, N,
                                                    pc_config['flow_props'])
-            # save minimum mass
-            pc_config['mass'] = sweepresults.min_mass
-            
+            # save minimum mass reactor for each pc configuration
+            TH_min_reactor = sweepresults.get_min_mass()
+            pc_config['mass'] = TH_min_reactor.mass
+            pc_config['flow_props'] = pc_config
+            pc_config['TH_results'] = TH_min_reactor
+
+        # get minimum-mass configuration to create neutronics model
+        pc_min_idx = list(self.cycle_parameters['mass']).\
+                          index(min(self.cycle_parameters['mass']))
+        
+        reactor = self.cycle_parameters[pc_min_idx]['TH_results']
+        print(reactor.__dict__)
 
     def fit_curve(self):
         """Fit a curve to the mass, q_therm data.
@@ -120,17 +149,21 @@ class PowerCycleSweep:
         return res
     
     def plot(self, xkey, ykey):
+        """
+        """
+        fig = plt.figure()
         plt.scatter(self.cycle_parameters[xkey], self.cycle_parameters[ykey])
         plt.title(ykey + " vs. " + xkey + " (Thermal considerations only)")
         plt.xlabel(xkey)
         plt.ylabel(ykey)
-        plt.show()
+        
+        return plt
 
 if __name__=='__main__':
     
     pc_data = PowerCycleSweep('CycleParameters.csv')
     pc_data.load_params()
-    pc_data.get_minimum_mass((0.005, 0.015), (1.01, 2), 0.15, 0.00031, 5)
+    pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.15, 0.00031, 5)
     res = pc_data.fit_curve()
-    pc_data.plot('T', 'Q_therm')
+    pc_data.plot('eta', 'mass')
     print(res)
