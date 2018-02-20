@@ -230,17 +230,17 @@ class Flow:
                   self.v * self.v / (2*self.D_e)
 
     def adjust_dp(self):
-    """Check for pressure constraint. This method calls calc_dp() to get
-    the pressure drop in the current condition. It checks the dp against the
-    power cycle-constrained allowable dp. If the pressure is too high, it
-    adjusts N_channels to the min N_channels that satisfies the dp
-    constraint.
+        """Check for pressure constraint. This method calls calc_dp() to get
+        the pressure drop in the current condition. It checks the dp against the
+        power cycle-constrained allowable dp. If the pressure is too high, it
+        adjusts N_channels to the min N_channels that satisfies the dp
+        constraint.
 
-    Modified Attributes:
-    --------------------
-        guess_channels: guess number of fuel channels [-]
-        N_channels: number of fuel channels [-]
-    """
+        Modified Attributes:
+        --------------------
+            guess_channels: guess number of fuel channels [-]
+            N_channels: number of fuel channels [-]
+        """
 
         self.calc_dp()
         while self.dp > self.fps.dP_allowed:

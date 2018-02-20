@@ -43,14 +43,30 @@ mode n
 print
 """)
 
-    def __init__(self, radius, PD, clad_t):
+    m_to_cm = 100
+
+    def __init__(self, TH_reactor):
         """Initialize parameters.
         """
-        self.r = radius * 100
-        self.c = clad_t * 100
-        self.PD = PD
+        self.r = TH_reactor.r_channel * self.m_to_cm
+        self.c = TH_reactor.c * self.m_to_cm
+        self.PD = TH_reactor.pd_ratio
         self.pitch = (self.r + self.c) * self.PD * 2.0
-
+        self.load_pyne_matlib()
+        self.fps = TH_reactor.fps
+    
+    def load_pyne_matlib(self):
+        """Load pyne material library.
+        """
+        # Initialize material libraries.
+        path_to_compendium = "/home/alex/.local/lib/python2.7/\
+site-packages/pyne/nuc_data.h5"
+        self.raw_matlib = MaterialLibrary()
+        # Write entire PyNE material library.
+        self.raw_matlib.from_hdf5(path_to_compendium,
+                             datapath="/material_library/materials",
+                             nucpath="/material_library/nucid")
+    
     def vol_card(self):
         """ Generate cell volumes.
         """
@@ -61,11 +77,11 @@ print
     
         self.vol_str = "VOL {0} {1} {2}".format(cool_vol, clad_vol, fuel_vol)
 
-    def write_fuel_string(self, enrich, fuel_type, matlib):
+    def write_fuel_string(self, enrich, fuel_type):
         """Get fuel material, enrich it and write fuel string.
         """
         # get the fuel-bonded compound
-        const_mat = matlib[fuel_type[0]]
+        const_mat = self.raw_matlib[fuel_type[0]]
         const_mat.expand_elements().to_atom_frac()
         
         # get atom fractions of U and fuel-bonded compound
@@ -86,14 +102,14 @@ print
         
         self.fuel.metadata['mat_number'] = self.mat_numbers['fuel']
 
-    def write_mat_string(self, clad_mat, coolant_mat, matlib):
+    def write_mat_string(self, clad_mat, coolant_mat):
         """Write the material data.
         """
         kg_m3_to_g_cc = 0.001
         self.mat_string = self.fuel.mcnp(frac_type='atom')
         
-        self.cool = matlib[coolant_mat]
-        self.clad = matlib[clad_mat]
+        self.cool = self.raw_matlib[coolant_mat]
+        self.clad = self.raw_matlib[clad_mat]
         
         # delete O-18 because MCNP gets cranky
         del self.fuel['8018']; del self.cool['8018']; del self.clad['8018']
@@ -103,7 +119,7 @@ print
         self.clad.metadata['mat_number'] = self.mat_numbers['clad']
 
         self.fuel.density = pc.rho_fuel*kg_m3_to_g_cc
-        self.cool.density = pc.rho_cool*kg_m3_to_g_cc
+        self.cool.density = self.fps.rho*kg_m3_to_g_cc
         self.clad.density = pc.rho_W*kg_m3_to_g_cc
         
         self.mat_string += self.clad.mcnp(frac_type='atom') +\
@@ -143,20 +159,9 @@ print
 def main():
     """An example of using the PinCellMCNP class to write an input file.
     """
-    # Initialize material libraries.
-    path_to_compendium = "/home/alex/.local/lib/python2.7/\
-site-packages/pyne/nuc_data.h5"
-    raw_matlib = MaterialLibrary()
-
-    # Write entire PyNE material library.
-    raw_matlib.from_hdf5(path_to_compendium,
-                         datapath="/material_library/materials",
-                         nucpath="/material_library/nucid")
-
     test = PinCellMCNP('hex', 0.5, 1.5, 0.031, 25)
-    
-    test.write_fuel_string(0.9999, ('Nitrogen', 1), raw_matlib)
-    test.write_mat_string('Tungsten', 'Carbon Dioxide', raw_matlib)
+    test.write_fuel_string(0.9999, ('Nitrogen', 1))
+    test.write_mat_string('Tungsten', 'Carbon Dioxide')
     test.write_input([1,1,1])
 
 if __name__ == '__main__':

@@ -73,13 +73,29 @@ end model
 end
 """)
 
-    def __init__(self, radius, PD, clad_t):
+    m_to_cm = 100
+    
+    def __init__(self, TH_reactor):
         """Initialize parameters.
         """
-        self.pd = PD
-        self.r = radius * 100
-        self.c = clad_t * 100
-        self.pitch = (self.r + self.c) * PD * 2.0
+        self.r = TH_reactor.r_channel * self.m_to_cm
+        self.c = TH_reactor.c * self.m_to_cm
+        self.PD = TH_reactor.pd_ratio
+        self.pitch = (self.r + self.c) * self.PD * 2.0
+        self.load_pyne_matlib()
+        self.fps = TH_reactor.fps
+    
+    def load_pyne_matlib(self):
+        """Load pyne material library.
+        """
+        # Initialize material libraries.
+        path_to_compendium = "/home/alex/.local/lib/python2.7/\
+site-packages/pyne/nuc_data.h5"
+        self.raw_matlib = MaterialLibrary()
+        # Write entire PyNE material library.
+        self.raw_matlib.from_hdf5(path_to_compendium,
+                             datapath="/material_library/materials",
+                             nucpath="/material_library/nucid")
     
     def equivalent_fuel_ratio(self):
         """
@@ -95,12 +111,12 @@ end
         self.hpitch = math.sqrt(A_total) / 2.0
         self.cladr = math.sqrt((A_clad / math.pi) + self.fuelr**2)
     
-    def write_fuel_string(self, enrich, fuel_type, matlib):
+    def write_fuel_string(self, enrich, fuel_type):
         """Get fuel material, enrich it and write fuel string.
         """
         kg_m3_to_g_cc = 0.001
         # get the fuel-bonded compound
-        const_mat = matlib[fuel_type[0]]
+        const_mat = self.raw_matlib[fuel_type[0]]
         const_mat.expand_elements().to_atom_frac()
         
         # get atom fractions of U and fuel-bonded compound
@@ -121,13 +137,13 @@ end
         
         self.fuel.metadata['mat_number'] = self.mat_numbers['fuel']
 
-    def write_mat_string(self, clad_mat, coolant_mat, matlib):
+    def write_mat_string(self, clad_mat, coolant_mat):
         """Write the material data.
         """
         kg_m3_to_g_cc = 0.001
         
-        self.cool = matlib[coolant_mat].collapse_elements([])
-        self.clad = matlib[clad_mat].collapse_elements([])
+        self.cool = self.raw_matlib[coolant_mat].collapse_elements([])
+        self.clad = self.raw_matlib[clad_mat].collapse_elements([])
         
         # delete O-18 because MCNP gets cranky
         del self.fuel['8018']; del self.cool['8018']; del self.clad['8018']
@@ -136,7 +152,7 @@ end
         self.cool.metadata['mat_number'] = self.mat_numbers['cool']
         self.clad.metadata['mat_number'] = self.mat_numbers['clad']
         
-        self.cool.density = pc.rho_cool*kg_m3_to_g_cc
+        self.cool.density = self.fps.rho*kg_m3_to_g_cc
         self.clad.density = pc.rho_W*kg_m3_to_g_cc
         self.fuel.density = pc.rho_fuel*kg_m3_to_g_cc
 
@@ -163,7 +179,7 @@ end
                                comm = "$")
         # write the file
         ifile_name = "./inputs/scale/leakage_{0}_{1}.inp".format(round(self.r, 5),
-                                              round(self.pd, 5))
+                                              round(self.PD, 5))
         ifile = open(ifile_name, 'w')
         ifile.write(file_string)
         ifile.close()

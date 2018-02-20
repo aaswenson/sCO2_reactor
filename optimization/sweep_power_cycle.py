@@ -1,5 +1,7 @@
 from thermo.chemical import Chemical
 from mass_opt import sweep_geometric_configs 
+from mcnp_inputs import PinCellMCNP
+from scale_inputs import PinCellSCALE
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -137,7 +139,17 @@ class PowerCycleSweep:
                           index(min(self.cycle_parameters['mass']))
         
         reactor = self.cycle_parameters[pc_min_idx]['TH_results']
-        print(reactor.__dict__)
+        
+        self.write_mcnp_input(reactor)
+
+    def write_mcnp_input(self, TH_reactor):
+        """ Write the mcnp input.
+        """
+
+        input = PinCellSCALE(TH_reactor)
+        input.write_fuel_string(0.5, ('Nitrogen', 1))
+        input.write_mat_string('Inconel-718', 'Carbon Dioxide')
+        input.write_input()
 
     def fit_curve(self):
         """Fit a curve to the mass, q_therm data.
