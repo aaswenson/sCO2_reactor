@@ -40,11 +40,10 @@ P_out = 1.74229e7  # outlet pressure [Pa]
 ###############################################################################
 T_fuel_max = 1847.5  # centerline fuel temperature [K]
 T_centerline = T_fuel_max
-k_clad = 108.3  # clad conductivity: W @ 1473 K [W/m-K]
+k_clad = 24  # clad conductivity: Inconel-718 @ 1073 K [W/m-K]
 k_cool = 0.07531  # coolant conductivity [W/m-k]
 # conservative estimate for thermal conductivity at fuel centerline temperature.
 k_fuel = fuel_cond(T_centerline)
-rho_W = 19250  # clad density [kg/m^3]
 rho_UN = 11300  # fuel density [kg/m^3]
 fuel_frac = 0.6  # fraction of fuel in CERMET
 
