@@ -161,14 +161,43 @@ class PowerCycleSweep:
 
         return res
     
-    def plot(self, xkey, ykey):
+    def plot(self):
         """
         """
+        plots = [
+      [('mass', 'mass'), ('mass', 'Q_therm'), ('mass', 'T'), ('mass', 'm_dot')],
+      [('Q_therm', 'mass'), ('Q_therm', 'Q_therm'), ('Q_therm', 'T'), ('Q_therm', 'm_dot')],
+      [('T', 'mass'), ('T', 'Q_therm'), ('T', 'T'), ('T', 'm_dot')],
+      [('m_dot', 'mass'), ('m_dot', 'Q_therm'), ('m_dot', 'T'), ('m_dot', 'm_dot')]]
+    
+        axis_labels = {'mass' : 'Fuel mass [kg]',
+                       'Q_therm' : 'Q therm [W]',
+                       'T' : 'Coolant T [K]',
+                       'm_dot' : 'Cool. flow rate [kg/s]'}
+
+        pass_idx = [4, 8, 9, 12, 13, 14] 
+        
         fig = plt.figure()
-        plt.scatter(self.cycle_parameters[xkey], self.cycle_parameters[ykey])
-        plt.title(ykey + " vs. " + xkey + " (Thermal considerations only)")
-        plt.xlabel(xkey)
-        plt.ylabel(ykey)
+
+        for xidx, row in enumerate(plots):
+            for yidx, plot in enumerate(row): 
+                plot_id = yidx*4 + xidx
+                if plot_id not in pass_idx:
+                    ax = fig.add_subplot(4, 4, plot_id+1)
+                    xkey = plot[0] 
+                    ykey = plot[1]
+                    x = self.cycle_parameters[xkey]
+                    y = self.cycle_parameters[ykey]
+                    ax.scatter(x, y)
+                    if ykey == 'Q_therm':
+                        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+                    if xkey == 'Q_therm':
+                        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+                    if yidx == 0:
+                        plt.title(axis_labels[xkey], fontsize=12)
+                    if xidx == yidx:
+                        plt.ylabel(axis_labels[ykey], fontsize=12)
+        #plt.tight_layout(pad=0.001)
         
         return plt
 
@@ -178,6 +207,6 @@ if __name__=='__main__':
     pc_data.load_params()
     pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.15, 0.00031, 5)
     res = pc_data.fit_curve()
-    plt = pc_data.plot('Q_therm', 'mass')
+    plt = pc_data.plot()
     plt.show()
     print(res)
