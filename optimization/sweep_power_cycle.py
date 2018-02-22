@@ -188,7 +188,7 @@ class PowerCycleSweep:
                     ykey = plot[1]
                     x = self.cycle_parameters[xkey]
                     y = self.cycle_parameters[ykey]
-                    ax.scatter(x, y)
+                    ax.scatter(x, y, s=5)
                     if ykey == 'Q_therm':
                         ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
                     if xkey == 'Q_therm':
@@ -198,12 +198,27 @@ class PowerCycleSweep:
                     if xidx == yidx:
                         plt.ylabel(axis_labels[ykey], fontsize=12)
         #plt.tight_layout(pad=0.001)
+        fig.savefig('mass_vs_all.png')
+        self.plot_mass_vs_Qtherm()
         
+        return plt
+
+    def plot_mass_vs_Qtherm(self):
+        """
+        """
+        fig = plt.figure()
+        plt.scatter(self.cycle_parameters['Q_therm'],
+                    self.cycle_parameters['mass'], s=12)
+        plt.xlabel('Q_therm [W]')
+        plt.ylabel('fuel mass [kg]')
+        plt.title('mass vs. thermal power (TH considerations only)')
+        fig.savefig('mass_vs_therm.png')
+       
         return plt
 
 if __name__=='__main__':
     
-    pc_data = PowerCycleSweep('CycleParameters.csv')
+    pc_data = PowerCycleSweep('CycleParameters_EvenSampling.csv')
     pc_data.load_params()
     pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.15, 0.00031, 5)
     res = pc_data.fit_curve()
