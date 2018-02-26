@@ -1,4 +1,6 @@
-# Other Imports
+# Other imports
+import json
+import time
 import math
 import numpy as np
 import operator
@@ -79,7 +81,6 @@ class Flow:
                 'v': ("Flow Velocity", "v [m/s]"),
                 'AR': ("Approximate Core Aspect Ratio", "AR [-]")
                }
-
     ################################
     # UNIT SYSTEM: m, kg, J, W, Pa #
     ################################
@@ -120,7 +121,7 @@ class Flow:
             L: length of core [m]
         """
         self.pd_ratio = PD
-        self.r_channel = diameter / 2.0
+        self.r_channel = radius
         self.c = c
         self.pitch = (self.r_channel + self.c) * self.pd_ratio * 2
         self.L = L
@@ -144,6 +145,7 @@ class Flow:
         self.A_flow = self.r_channel ** 2 * math.pi
         self.A_fuel = math.sqrt(3)*self.pitch**2 / 2.0 -\
             (self.r_channel + self.c) ** 2 * math.pi
+        self.A_clad = ((self.r_channel + self.c)**2 - self.r_channel**2)*math.pi
         self.D_e = 2.0 * self.r_channel
 
     def characterize_flow(self):
