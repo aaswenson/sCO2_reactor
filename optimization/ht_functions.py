@@ -316,7 +316,7 @@ class ParametricSweep():
 
     """
 
-    def __init__(self, N):
+    def __init__(self, N=20):
         """Initialie ParametricSweep class.
 
         Initialized Attributes
@@ -332,7 +332,10 @@ class ParametricSweep():
                                          ['r', 'pd'],
                                          'formats': ['f8']*N_cats})
 
-    def sweep_geometric_configs(self, diams, pds, z, c, props=None):
+    def sweep_geometric_configs(self, radii=(0.005, 0.01), 
+                                      pds=(1.1, 2),
+                                      z=0.15, c=0.00031,
+                                      props=None):
         """Perform parametric sweep through pin cell geometric space. Calculate the
         minimum required mass for TH purposes at each point.
         """
@@ -349,11 +352,10 @@ class ParametricSweep():
         # sweep through parameter space, calculate min mass
         for i in range(self.N):
             for j in range(self.N):
-                flowdata = Flow(D_mesh[i, j], PD_mesh[i, j], c, z, props)
+                flowdata = Flow(R_mesh[i, j], PD_mesh[i, j], c, z, props)
                 oned_flow_modeling(flowdata)
                 self.save_iteration(flowdata, i, j)
-
-        
+    
     def save_iteration(self, iteration, i, j):
         """ Save the data from each iteration of the parametric sweep. 
         """
@@ -375,8 +377,7 @@ class ParametricSweep():
         # get data for min mass config
         self.min_mass = self.data[self.min_idx]['mass']
 
-        # return the min_idx to get other results at minimum config
-        return self.min_idx
+        return self.min_mass
 
     def disp_min_mass(self):
         """ Display the minimum mass configuration.
