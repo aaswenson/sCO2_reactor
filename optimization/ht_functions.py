@@ -335,14 +335,14 @@ class ParametricSweep():
         minimum required mass for TH purposes at each point.
         """
         # calculate appropriate step sizes given range
-        D_step = (diams[1] - diams[0]) / self.N
+        R_step = (radii[1] - radii[0]) / self.N
         PD_step = (pds[1] - pds[0]) / self.N
         # ranges for diameter and pitch/diameter ratio
-        D_array = np.arange(diams[0], diams[1], D_step)
+        R_array = np.arange(radii[0], radii[1], R_step)
         PD_array = np.arange(pds[0], pds[1], PD_step)
 
         # create parameter mesh
-        D_mesh, PD_mesh = np.meshgrid(D_array, PD_array)
+        R_mesh, PD_mesh = np.meshgrid(R_array, PD_array)
 
         # sweep through parameter space, calculate min mass
         for i in range(self.N):
