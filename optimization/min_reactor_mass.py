@@ -23,9 +23,8 @@ def get_min_mass(T, P, dp, m_dot, Q_therm):
 
     sweepresults = ParametricSweep()
     sweepresults.sweep_geometric_configs(flowprops=properties)
-    print(properties.__dict__)
-    print(FlowProperties.__dict__)
     
     return sweepresults.get_min_mass()
 
-
+if __name__ == '__main__':
+    print(get_min_mass(1100, 1.7e7, 481000, 0.75, 131000))
