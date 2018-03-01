@@ -1,7 +1,6 @@
 """Physical Constants Used for 1D simulation
 *** All values are bulk flow values averaged axially across the core ***
 """
-from thermo.chemical import Chemical
 import math
 import numpy as np
 
