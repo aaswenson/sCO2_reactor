@@ -110,7 +110,7 @@ class Flow:
     q_bar = 0  # axially-averaged volumetric generation
     q_per_channel = 0  # generation per fuel channel
 
-    def __init__(self, diameter, PD, c, L, flowprops=FlowProperties()):
+    def __init__(self, radius, PD, c, L, flowprops=FlowProperties()):
         """Initialize the flow iteration class.
 
         Initialized Attributes:
