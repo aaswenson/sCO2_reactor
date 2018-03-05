@@ -1,7 +1,7 @@
 from ht_functions import Flow, ParametricSweep
 from physical_constants import FlowProperties
 
-def get_min_mass(T, P, dp, m_dot, Q_therm):
+def get_min_mass(temp, press, dp, mass_flow, thermal_power):
     """Callable wrapper for MATLAB returns minimum reactor mass for a set of
     input flow conditions.
 
@@ -18,11 +18,11 @@ def get_min_mass(T, P, dp, m_dot, Q_therm):
         min_mass (float): minimum reactor core mass for given flow conditions.
     """
     # store primarty and calculate secondary flow properties
-    properties = FlowProperties(T, P, m_dot, Q_therm)
-    properties.dP_allowed = dp
+    properties = FlowProperties(T=temp, P=press, m_dot=mass_flow,
+            Q_therm=thermal_power, dp_limit=dp)
 
     sweepresults = ParametricSweep()
-    sweepresults.sweep_geometric_configs(flowprops=properties)
+    sweepresults.sweep_geometric_configs(props=properties)
     
     return sweepresults.get_min_mass()
 
