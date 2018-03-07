@@ -18,8 +18,8 @@ def get_min_mass(temp, press, dp, mass_flow, thermal_power):
         min_mass (float): minimum reactor core mass for given flow conditions.
     """
     # store primarty and calculate secondary flow properties
-    properties = FlowProperties(T=temp, P=press, m_dot=mass_flow,
-            Q_therm=thermal_power, dp_limit=dp)
+    properties = FlowProperties({'T' : temp, 'P' : press, 'm_dot' : mass_flow,
+                                 'Q_therm' : thermal_power, 'dp_limit' : dp})
 
     sweepresults = ParametricSweep()
     sweepresults.sweep_geometric_configs(props=properties)
