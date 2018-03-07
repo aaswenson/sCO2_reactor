@@ -17,6 +17,6 @@ jobs:
             pytests
 workflows:
     version: 2
-    test:
+    build_and_test:
         jobs:
             -test_python_code
