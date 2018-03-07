@@ -5,7 +5,7 @@
 version: 2
 
 jobs:
-  test python code:
+  test_python_code:
     docker:
         - image: circleci/python:3.6.1
     steps:
@@ -15,3 +15,8 @@ jobs:
           command: |
             cd ./optimization
             pytests
+workflows:
+    version: 2
+    test:
+        jobs:
+            -test_python_code
