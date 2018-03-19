@@ -29,8 +29,8 @@ class HomogeneousInput:
     """Write Homogeneous Input File.
     Class to write homogeneous MCNP burnup input files.
     """
-    
-    def __init__(self, radius, length, thick_refl=15):
+    kW_to_MW = 0.001
+    def __init__(self, radius, length, power, thick_refl=15):
         """Initialize geometric reactor parameters.
 
         Initialized Attributes:
@@ -38,10 +38,13 @@ class HomogeneousInput:
             z (float): reactor core height
             r (float): reactor core radius
             frac_fuel (float): fuel to coolant channel fraction
+            refl_t (float): reflector thickness
+            Q_therm (float): core thermal power
         """
         self.z = length
         self.r = radius
         self.refl_t = thick_refl
+        self.Q_therm = power*self.kW_to_MW
 
     def calc_vol_vfrac(self, r_cool, PD, c):
         """Get volumes for core and reflector regions. Calculate the volume
@@ -149,7 +152,7 @@ class HomogeneousInput:
                 self.fuel_string += '\n'
                 
         
-    def write_input(self):
+    def write_input(self, file_num):
         """ Write MCNP6 input files.
         This function writes the MCNP6 input files for the leakage experiment using
         the template input string. It writes a bare and reflected core input file
@@ -170,10 +173,10 @@ class HomogeneousInput:
                                        fuel_string = self.fuel_string,
                                        fuel_rho = self.rho,
                                        fuel_vol = self.core_vol,
-                                       refl_vol = self.core_vol)
+                                       refl_vol = self.core_vol,
+                                       core_power = self.Q_therm)
         # write the file
-        filename = 'r_{0}_{1}.i'.format(round(self.vfrac_cermet, 3), 
-                                                 round(self.r, 3))
+        filename = '{0}.i'.format(file_num)
         ifile = open(filename, 'w')
         ifile.write(file_string)
         ifile.close()
