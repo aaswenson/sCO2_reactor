@@ -44,7 +44,7 @@ class HomogeneousInput:
         self.z = length
         self.r = radius
         self.refl_t = thick_refl
-        self.Q_therm = power*self.kW_to_MW
+        self.Q_therm = round(power*self.kW_to_MW, 5)
 
     def calc_vol_vfrac(self, r_cool, PD, c):
         """Get volumes for core and reflector regions. Calculate the volume
@@ -76,10 +76,6 @@ class HomogeneousInput:
         self.vfrac_cool = v_cool / cell_vol
         self.vfrac_clad = v_clad / cell_vol
         self.vfrac_cermet = v_cermet / cell_vol
-        
-        print(self.vfrac_cool)
-        print(self.vfrac_clad)
-        print(self.vfrac_cermet)
         
     def homog_core(self, enrich=0.9, r_cool=0.5, PD=1.48, rho_cool=0.087, c=0.031):
         """Homogenize the fuel, clad, and coolant.
@@ -152,19 +148,17 @@ class HomogeneousInput:
                 self.fuel_string += '\n'
                 
         
-    def write_input(self, file_num):
+    def write_input(self, file_num, header="Homogeneous MCNP6 Depletion"):
         """ Write MCNP6 input files.
         This function writes the MCNP6 input files for the leakage experiment using
         the template input string. It writes a bare and reflected core input file
         for each core radius.
         """
-        # homogenize material and write MCNP card
-        core_comp = self.homog_core()
-        self.write_mat_string(core_comp)
         # load template, substitute parameters and write input file
         input_tmpl = open('base_input.txt')
         templ = Template(input_tmpl.read())
-        file_string = templ.substitute(cool_frac = self.vfrac_cermet,
+        file_string = templ.substitute(model_information = header,
+                                       cool_frac = self.vfrac_cermet,
                                        r_core = self.r,
                                        core_z = self.z,
                                        r_refl = self.r + self.refl_t,
