@@ -82,8 +82,8 @@ def fill_data_array(cube):
             test_cases[sample_idx][dim] = b + cube[sample_idx][dim_idx] * a
     
     # write the data to a csv file
-    np.savetxt("data.csv", test_cases, delimiter=',',
-                header=','.join(test_cases.dtype.names))
+#    np.savetxt("data.csv", test_cases, delimiter=',',
+#                header=','.join(test_cases.dtype.names))
     
     return test_cases
 
@@ -121,9 +121,12 @@ if __name__=='__main__':
     N = len(params)
     samples = 40
 #    cube = gen_hypercube(samples, N)
-    sa_space = gen_SA_inputs(800)
-    
+    # 800
+    sa_space = gen_SA_inputs(2)
+    print(sa_space)
     data = fill_data_array(sa_space)
-    write_inputs(data)
+    print(data)
+#    data = fill_data_array(sa_space)
+#    write_inputs(data)
     # cleanup
-    os.system('rm *.i input_files.txt data.csv')
+#    os.system('rm *.i input_files.txt data.csv')

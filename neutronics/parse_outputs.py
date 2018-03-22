@@ -50,7 +50,9 @@ def parse_etal(tally, lines):
     """
     bins = []
     vals = []
+    norm = []
     errs = []
+    aver = []
     tally_locations = []
     # get number of energy bins
     bupper = lines.index(' energy bins\n')
@@ -75,10 +77,12 @@ def parse_etal(tally, lines):
         bins.append(bindata)
         vals.append(valdata)
         errs.append(errdata)
+        norm.append([x/sum(bindata) for x in bindata])
+        # weighted neutron energy average
+        aver.append(np.average(bindata, weights=valdata))
+        
 
-    average = np.average(bins, weights=vals)
-
-    return (bins, vals, errs, average)
+    return (bins, vals, errs, aver, norm)
 
 def parse_header_string(string):
     """Get important parameters from MCNP6 input header string.
@@ -86,38 +90,39 @@ def parse_header_string(string):
     for line in string:
         if '1-' in line:
             data = line.split()[1]
-            AR = float(data.split(',')[0])
-            PD = float(data.split(',')[1])
-            cool_r = float(data.split(',')[2])
-            core_r = float(data.split(',')[3])
-            enrich = float(data.split(',')[4])
-            power = float(data.split(',')[7])
+            core_r = round(float(data.split(',')[0]), 5)
+            cool_r = round(float(data.split(',')[1]), 5)
+            PD = round(float(data.split(',')[2]), 5)
+            power = round(float(data.split(',')[3]), 5)
+            enrich = round(float(data.split(',')[4]), 5)
             
             break
 
-    return [AR, PD, cool_r, core_r, enrich, power]
+    return [core_r, cool_r, PD, power, enrich]
 
 def save_store_data(data_dir='./data/*'):
     """
     """
     outstrings = load_outputs(data_dir)
-    names = list(ns.parameters.keys()) + ['keff', 'ave_E']
+    names = ['core_r', 'cool_r', 'PD', 'power', 'enrich', 'AR', 'keff', 'ave_E']
     types = ['f8']*len(names)
     N = len(outstrings)
     data = np.zeros(N, dtype={'names' : names, 'formats' : types})
 
     for idx, string in enumerate(outstrings):
-        params = parse_header_string(string)
-        data[idx]['AR'] = round(params[0], 5)
-        data[idx]['PD'] = round(params[1], 5)
-        data[idx]['cool_r'] = round(params[2], 5)
-        data[idx]['core_r'] = round(params[3], 5)
-        data[idx]['enrich'] = round(params[4], 5)
-        data[idx]['power'] = round(params[5], 5)
+        core, cool, PD, Q, e = parse_header_string(string)
+        data[idx]['AR'] = 1
+        data[idx]['core_r'] = core
+        data[idx]['cool_r'] = cool
+        data[idx]['PD'] = PD
+        data[idx]['power'] = Q
+        data[idx]['enrich'] = e
+        # fill in results data
         data[idx]['keff'] = parse_keff(string)[2][-1]
-        data[idx]['ave_E'] = parse_etal('1', string)[-1]
-
-    np.savetxt("depl_results.csv", data, delimiter=',', fmt='%10.5f',
+        data[idx]['ave_E'] = parse_etal('1', string)[3][0]
+    
+    datafile = open('/home/alex/research/calculation_results/depl_results.csv', 'ba')
+    np.savetxt(datafile, data, delimiter=',', fmt='%10.5f',
                header=','.join(data.dtype.names))
 
 def plot_results(data, ind, dep, colorplot=None):
@@ -136,8 +141,8 @@ def plot_results(data, ind, dep, colorplot=None):
     fig = plt.figure()
     if colorplot:
         plt.scatter(data[ind], data[dep], c=data[colorplot],
-                cmap=plt.cm.get_cmap('jet', len(set(data[colorplot]))))
-        plt.colorbar(ticks=list(set(data[colorplot])), label=label_strings[colorplot])
+                cmap=plt.cm.get_cmap('viridis', len(set(data[colorplot]))))
+        plt.colorbar(label=label_strings[colorplot])
     else:
         plt.scatter(data[ind], data[dep])
     # titles and labels
@@ -147,16 +152,16 @@ def plot_results(data, ind, dep, colorplot=None):
 
     return plt
 
-def load_from_csv(datafile="depl_results.csv"):
+def load_from_csv(datafile="/home/alex/research/calculation_results/depl_results.csv"):
     """load the results data from a csv.
     """
     data = np.genfromtxt(datafile, delimiter=',',
-            names=list(ns.parameters.keys()) + ['keff', 'ave_E'])
+            names=list(ns.params) + ['AR', 'keff', 'ave_E'])
     
     return data
 
 if __name__ == '__main__':
-    save_store_data()
+#    save_store_data()
     data = load_from_csv()
     plt = plot_results(data, 'power', 'keff', 'core_r')
-    plt.show()
+    plt.savefig('plot.svg', format='svg', dpi=1000)
