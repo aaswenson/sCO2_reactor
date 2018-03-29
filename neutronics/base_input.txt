@@ -38,6 +38,7 @@ m2
      5011 -8.1569e-07
      6012 -9.8841e-01
      6013 -1.1584e-02
+mt2 grph.20t
 VOL ${fuel_vol} ${refl_vol}
 kcode 10000 1 15 60
 ksrc  0 0 1

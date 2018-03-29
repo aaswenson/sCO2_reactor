@@ -4,6 +4,8 @@ import numpy as np
 import glob
 import neutronic_sweeps as ns
 
+results = ['keff', 'ave_E']
+
 def parse_keff(lines):
     """Parse the keff data from the output file.
     """
@@ -74,23 +76,15 @@ def parse_header_string(string):
     """
     for line in string:
         if '1-' in line:
-            data = line.split()[1]
-            core_r = float(data.split(',')[0])
-            cool_r = float(data.split(',')[1])
-            PD = float(data.split(',')[2])
-            power = float(data.split(',')[3])
-            enrich = float(data.split(',')[4])
-            
+            data = line.split()[1].split(',')[:-1]
             break
+    return data
 
-    return [core_r, cool_r, PD, power, enrich]
-
-def save_store_data(data_dir='./data/*'):
+def save_store_data(data_dir='data/*i.o'):
     """
     """
     files = glob.glob(data_dir)
-    
-    names = list(ns.parameters.keys()) + ['keff', 'ave_E']
+    names = ns.dimensions + results
     types = ['f8']*len(names)
     N = len(files)
     data = np.zeros(N, dtype={'names' : names, 'formats' : types})
@@ -99,17 +93,14 @@ def save_store_data(data_dir='./data/*'):
         fp = open(file, 'r')
         string = fp.readlines()
         params = parse_header_string(string)
-        data[idx]['core_r'] = round(params[0], 5)
-        data[idx]['cool_r'] = round(params[1], 5)
-        data[idx]['PD'] = round(params[2], 5)
-        data[idx]['power'] = round(params[3], 5)
-        data[idx]['enrich'] = round(params[4], 5)
-        data[idx]['keff'] = parse_keff(string)[2][-1]
-        data[idx]['ave_E'] = parse_etal('1', string)[-1]
-        
+        params.append(parse_keff(string)[2][-1])
+        params.append(parse_etal('1', string)[-1])
+        # save data and close file
+        data[idx] = tuple(params)
         fp.close()
+
     np.savetxt("depl_results.csv", data, delimiter=',', fmt='%10.5f',
-               header=','.join(data.dtype.names))
+               header=','.join(names))
 
 def plot_results(data, ind, dep, colorplot=None):
     """Generate Plots
@@ -156,13 +147,13 @@ def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
     """
     data = np.genfromtxt(datafile, delimiter=',',
-            names=['core_r', 'PD', 'cool_r', 'AR', 'power','enrich', 'keff', 'ave_E'])
+            names= ns.dimensions + results)
     
     return data
 
 if __name__ == '__main__':
-    #save_store_data()
+#    save_store_data()
     data = load_from_csv()
-    #data = filter_data([('power', 'great', 145), ('power', 'less', 146)], data)
-    plt = plot_results(data, 'cool_r', 'keff', 'enrich')
+    data = filter_data([('power', 'equal', 120),('AR', 'equal', 1.3)], data)#, ('AR', 'equal', 1.0)], data)
+    plt = plot_results(data, 'core_r', 'keff', 'enrich')
     plt.show()
