@@ -1,7 +1,5 @@
 from thermo.chemical import Chemical
 from mass_opt import sweep_geometric_configs 
-from mcnp_inputs import PinCellMCNP
-from scale_inputs import PinCellSCALE
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -60,9 +58,8 @@ class PowerCycleSweep:
         """
         """
         self.filename = power_cycle_input
-        self.names = ['Q_therm', 'm_dot', 'T', 'P', 'eta', 'mass', 'TH_results',
-                'flow_props']
-        self.types = ['f8']*6 + ['O', 'O']
+        self.names = ['Q_therm', 'm_dot', 'T', 'P', 'eta', 'mass', 'rho','TH_results', 'flow_props']
+        self.types = ['f8']*7 + ['O', 'O']
 
     def load_params(self):
         """Load power cycle parameters.
@@ -85,7 +82,9 @@ class PowerCycleSweep:
                 # store float parameters
                 for key in self.names[0:5]:
                     self.cycle_parameters[key][idx] = bulklet.__dict__[key]
-                    self.cycle_parameters['flow_props'][idx] = bulklet
+                
+                self.cycle_parameters['flow_props'][idx] = bulklet
+                self.cycle_parameters['rho'][idx] = bulklet.rho
                     
         # close file
         fp.close()
@@ -141,25 +140,6 @@ class PowerCycleSweep:
         reactor = self.cycle_parameters[pc_min_idx]['TH_results']
         print(reactor.__dict__)
         print(reactor.fps.__dict__)
-        #self.write_mcnp_input(reactor)
-
-    def write_mcnp_input(self, TH_reactor):
-        """ Write the mcnp input.
-        """
-
-        input = PinCellSCALE(TH_reactor)
-        input.write_fuel_string(0.5, ('Nitrogen', 1))
-        input.write_mat_string('Inconel-718', 'Carbon Dioxide')
-        input.write_input()
-
-    def fit_curve(self):
-        """Fit a curve to the mass, q_therm data.
-        """
-        res = np.polyfit(self.cycle_parameters['Q_therm'], 
-                         self.cycle_parameters['mass'],
-                         2)
-
-        return res
     
     def plot(self):
         """
@@ -198,30 +178,36 @@ class PowerCycleSweep:
                     if xidx == yidx:
                         plt.ylabel(axis_labels[ykey], fontsize=12)
         #plt.tight_layout(pad=0.001)
-        fig.savefig('mass_vs_all.png')
+        fig.savefig('mass_vs_all.png', dpi=500)
         self.plot_mass_vs_Qtherm()
         
         return plt
 
-    def plot_mass_vs_Qtherm(self):
+    def plot_mass_vs_Qtherm(self, colorplot=None):
         """
         """
         fig = plt.figure()
-        plt.scatter(self.cycle_parameters['Q_therm'],
-                    self.cycle_parameters['mass'], s=12)
+        if colorplot:
+            plt.scatter(self.cycle_parameters['Q_therm'],
+                        self.cycle_parameters['mass'], s=12,
+                        c=self.cycle_parameters[colorplot],
+                        cmap=plt.cm.get_cmap('plasma',
+                            len(set(self.cycle_parameters[colorplot]))))
+            plt.colorbar(label=colorplot)
+        else:
+            plt.scatter(self.cycle_parameters['Q_therm'],
+                        self.cycle_parameters['mass'], s=12)
         plt.xlabel('Q_therm [W]')
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(1,2))
         plt.ylabel('fuel mass [kg]')
-        plt.title('mass vs. thermal power (TH considerations only)')
-        fig.savefig('mass_vs_therm.png')
+        plt.title('Reactor Mass vs. Thermal Power')
+        fig.savefig('mass_vs_therm.png', dpi=500)
        
         return plt
 
 if __name__=='__main__':
-    
     pc_data = PowerCycleSweep('CycleParameters_EvenSampling.csv')
     pc_data.load_params()
-    pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.15, 0.00031, 5)
-    res = pc_data.fit_curve()
-    plt = pc_data.plot()
+    pc_data.get_minimum_mass((0.005, 0.015), (1.1, 2), 0.25, 0.00031, 5)
+    plt = pc_data.plot_mass_vs_Qtherm('m_dot')
     plt.show()
-    print(res)
