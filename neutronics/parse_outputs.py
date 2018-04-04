@@ -173,20 +173,37 @@ def filter_data(filters, data):
         data = data[opers[op[1]](data[op[0]], op[2])]   
     
     return data
+    
+def get_min_mass(data):
+    """ After the parametric sweep is complete, find the minimum calculated
+    fuel mass.
+    """
+    # search the results for minimum-mass configuration
+    min_idx = list(data['mass']).index(min(data['mass']))
+
+    # get data for min mass config
+    min_mass = data[min_idx]['mass']
+
+    # return the min_idx to get other results at minimum config
+    return min_idx
 
 
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
     """
+    fp = open(datafile, 'r')
+    names = fp.readlines()[0].strip('#').split(',')
     data = np.genfromtxt(datafile, delimiter=',',
-            names= ns.dimensions + results +['mass'])
+            names= names)
     
     return data
 
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-#    data = filter_data([('power', 'equal', 120),('AR', 'equal', 1.3), ('PD',
-#    'less', 1.15)], data)#, ('AR', 'equal', 1.0)], data)
-    plt = plot_results(data, 'power', 'keff', 'mass')
+#    data = filter_data([('keff', 'great', 1)], data)
+    plt = plot_results(data, 'AR', 'keff', 'mass')
     plt.show()
+    idx = get_min_mass(data)
+    print(data[idx]['mass'])
+    print(data[idx])
