@@ -1,4 +1,6 @@
+import math
 import operator
+import material_data as md
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
@@ -77,14 +79,39 @@ def parse_header_string(string):
     for line in string:
         if '1-' in line:
             data = line.split()[1].split(',')[:-1]
+
+            data = [float(x) for x in data]
             break
     return data
+
+def calc_fuel_mass(core_r, AR, PD, r):
+    """
+    """
+    c = 0.0031
+    l = core_r*AR
+    core_v = math.pi*core_r*core_r*l
+
+    pitch = 2*r*PD
+    # calculate 'volumes' for fixed length
+    v_cool = (r ** 2 * math.pi)
+    # clad volume fraction
+    v_clad = ((r + c)**2 - r**2)*math.pi
+    # fuel volume fraction
+    v_cermet = (math.sqrt(3)*pitch**2 / 2.0) - (r + c) ** 2 * math.pi 
+
+    cell_vol = v_cool + v_clad + v_cermet
+    # calculate vfracs from total cell volume
+    vfrac_cermet = v_cermet / cell_vol
+    
+    fuel_vol = core_v * vfrac_cermet
+
+    return (fuel_vol * md.rho_UN) / 1000
 
 def save_store_data(data_dir='data/*i.o'):
     """
     """
     files = glob.glob(data_dir)
-    names = ns.dimensions + results
+    names = ns.dimensions + results + ['mass']
     types = ['f8']*len(names)
     N = len(files)
     data = np.zeros(N, dtype={'names' : names, 'formats' : types})
@@ -95,6 +122,7 @@ def save_store_data(data_dir='data/*i.o'):
         params = parse_header_string(string)
         params.append(parse_keff(string)[2][-1])
         params.append(parse_etal('1', string)[-1])
+        params.append(calc_fuel_mass(params[1], params[0],params[3],params[2]))
         # save data and close file
         data[idx] = tuple(params)
         fp.close()
@@ -112,21 +140,25 @@ def plot_results(data, ind, dep, colorplot=None):
                      'enrich' : 'U-235 Enrichment [-]',
                      'power' : 'Core Thermal Power [kW]',
                      'keff' : 'k-eff [-]',
-                     'ave_E' : 'average neutron energy [MeV]'
+                     'ave_E' : 'average neutron energy [MeV]',
+                     'mass' : 'fuel mass [kg]'
                     }
     # plot
     fig = plt.figure()
+    colorname = ''
     if colorplot:
-        plt.scatter(data[ind], data[dep], c=data[colorplot],
-                cmap=plt.cm.get_cmap('jet', len(set(data[colorplot]))))
+        plt.scatter(data[ind], data[dep], s=6, c=data[colorplot],
+                cmap=plt.cm.get_cmap('plasma', len(set(data[colorplot]))))
         plt.colorbar(label=label_strings[colorplot])
+        colorname = colorplot
     else:
-        plt.scatter(data[ind], data[dep])
+        plt.scatter(data[ind], data[dep], s=6)
     # titles and labels
     plt.title("{0} vs. {1}".format(dep, ind))
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
-
+    
+    plt.savefig("{0}_vs_{1}_{2}.png".format(dep, ind, colorname), dpi=500)
     return plt
 
 def filter_data(filters, data):
@@ -147,13 +179,14 @@ def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
     """
     data = np.genfromtxt(datafile, delimiter=',',
-            names= ns.dimensions + results)
+            names= ns.dimensions + results +['mass'])
     
     return data
 
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-    data = filter_data([('power', 'equal', 120),('AR', 'equal', 1.3)], data)#, ('AR', 'equal', 1.0)], data)
-    plt = plot_results(data, 'core_r', 'keff', 'enrich')
+#    data = filter_data([('power', 'equal', 120),('AR', 'equal', 1.3), ('PD',
+#    'less', 1.15)], data)#, ('AR', 'equal', 1.0)], data)
+    plt = plot_results(data, 'power', 'keff', 'mass')
     plt.show()
