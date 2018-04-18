@@ -201,7 +201,7 @@ class PowerCycleSweep:
         plt.ticklabel_format(style='sci', axis='x', scilimits=(1,2))
         plt.ylabel('fuel mass [kg]')
         plt.title('Reactor Mass vs. Thermal Power')
-        fig.savefig('mass_vs_therm.png', dpi=500)
+        fig.savefig('mass_vs_therm.eps', format='eps', dpi=1500)
        
         return plt
 
