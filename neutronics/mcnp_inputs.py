@@ -71,11 +71,11 @@ class HomogeneousInput:
         # fuel volume fraction
         v_cermet = (math.sqrt(3)*pitch**2 / 2.0) - (r_cool + c) ** 2 * math.pi 
 
-        cell_vol = v_cool + v_clad + v_cermet
+        self.cell_vol = v_cool + v_clad + v_cermet
         # calculate vfracs from total cell volume
-        self.vfrac_cool = v_cool / cell_vol
-        self.vfrac_clad = v_clad / cell_vol
-        self.vfrac_cermet = v_cermet / cell_vol
+        self.vfrac_cool = v_cool / self.cell_vol
+        self.vfrac_clad = v_clad / self.cell_vol
+        self.vfrac_cermet = v_cermet / self.cell_vol
         
     def homog_core(self, enrich=0.9, r_cool=0.5, PD=1.48, rho_cool=0.087, c=0.031):
         """Homogenize the fuel, clad, and coolant.
@@ -103,7 +103,7 @@ class HomogeneousInput:
         self.rho = round(mfrac_fuel + mfrac_matr + mfrac_cool + mfrac_clad, 5)
         
         # get UN composition
-        fuel_comp = md.enrich_fuel(enrich)
+        fuel_comp, self.MM_fuel = md.enrich_fuel(enrich)
 
         components = {
         # get isotopic mass fractions for fuel, matrix, coolant, cladding
@@ -117,13 +117,33 @@ class HomogeneousInput:
                                  for iso, comp in md.CO2.items()}
                      }
         
-        
         # homogenize the material by merging components
         homog_comp = {}
         for frac in components:
             homog_comp = merge_comps(homog_comp, components[frac])
         
         return homog_comp
+    
+    def component_number_densities(self, rho_cool=0.087):
+        """
+        """
+        eff_rho_fuel = self.vfrac_cermet * md.vfrac_UN * md.rho_UN
+        eff_rho_matr = self.vfrac_cermet * (1-md.vfrac_UN) * md.rho_W
+        eff_rho_cool = self.vfrac_cool * rho_cool
+        eff_rho_clad = self.vfrac_clad * md.rho_In
+        
+        vfrac_matr = self.vfrac_cermet * (1-md.vfrac_UN)
+
+        N = 6.022e-1 # avogadro's number / b-cm
+        self.ndens = {'fuel' : N * eff_rho_fuel / self.MM_fuel,
+                      'matr' : 6.322e-2 * vfrac_matr, 
+                      'clad' : 8.547e-2 * self.vfrac_clad,
+                      'cool' : N * eff_rho_cool / md.MM_CO2 
+                     }
+        fp = open('test.txt', 'a')
+        fp.write('{0}\n'.format(sum(self.ndens.values())))
+        fp.close()
+        print(sum(self.ndens.values()))
 
     def write_mat_string(self, homog_comp):
         """Write the fuel composition in MCNP-format.
@@ -154,6 +174,7 @@ class HomogeneousInput:
         the template input string. It writes a bare and reflected core input file
         for each core radius.
         """
+        self.component_number_densities()
         # load template, substitute parameters and write input file
         input_tmpl = open('base_input.txt')
         templ = Template(input_tmpl.read())

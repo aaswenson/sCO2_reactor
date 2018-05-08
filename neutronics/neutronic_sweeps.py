@@ -20,18 +20,19 @@ from mcnp_inputs import HomogeneousInput
 np.random.seed(1324291)
 
 dimensions = ['AR', 'core_r', 'cool_r', 'PD', 'power', 'enrich']
-const_dims = ['cool_r', 'AR', 'PD', 'enrich', 'core_r']
+const_dims = ['power', 'cool_r']
 
-const_vals = {'AR' : 1, 'cool_r' : 0.5, 'core_r' : 20, 'enrich' : 0.9, 'PD' : 1.537}
-#parameters = {'core_r'  : (20, 50, 5),         
-#              'AR'      : (0.7, 1.3, 0.3),
-#              'PD'      : (1.4, 1.6, 0.1),        
-#              'enrich'  : (0.3, 0.9, 0.1)
-#             }
-parameters = {'power' : (80, 5000, 50)}
+const_vals = {'power' : 160, 'cool_r' : 0.5}
+
+parameters = {'core_r'  : (20, 50, 5),         
+              'AR'      : (0.7, 1.3, 0.3),
+              'PD'      : (1.1, 1.6, 0.1),        
+              'enrich'  : (0.3, 0.9, 0.1),
+              'cool_r' : (0.5, 1, 0.1)
+             }
 
 dim = len(parameters.keys())
-samples = 100
+samples = 4000
 
 def gen_hypercube(samples, N):
     """Generate N-dimensional latin hypercube to sample dimensional reactor

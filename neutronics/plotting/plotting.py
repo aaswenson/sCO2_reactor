@@ -1,3 +1,4 @@
+import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -5,6 +6,8 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 import numpy as np
 import pandas as pd
+
+sys.path.append('../')
 
 from parse_outputs import filter_data, plot_results
 import neutronic_sweeps as ns
@@ -24,7 +27,7 @@ ops = {'lin' : lambda x: x,
        'log' : lambda x: np.log(x)
       }
 
-data = pd.read_csv("depl_results.csv")
+data = pd.read_csv("../depl_results.csv")
 #data = filter_data([('keff', 'great', 1.0)], data)
 
 def plot_results(ind, dep, labels):
@@ -163,18 +166,20 @@ def surf_plot(data, ind1, ind2, dep, colorplot=None, linlog=('lin', 'lin', 'lin'
     Y = ops[linlog[0]](data[ind2])
     Z = ops[linlog[1]](data[dep])
 
-    scaled_size = np.log(np.add(data['keff'], [1]*len(data))) * 500
+    scaled_size = np.log(np.add(data['keff'], [1]*len(data))) * 100
 
     if colorplot:
         # Plot the surface.
         cplt = ops[linlog[2]](data[colorplot])
-        p = ax.scatter(X,Y,Z, s=10, c=cplt,
+        p = ax.scatter(X,Y,Z, s=scaled_size, c=cplt,
                 cmap=plt.cm.get_cmap('viridis',
             len(data[colorplot])))
         plt.colorbar(p, ax=ax, label=axis_labels[colorplot])
+        plt.title('{0} = f({1}, {2}, {3})'.format(dep, ind1, ind2, colorplot))
     else:
         p = ax.scatter(X, Y, Z, s=10, c=Z)
         plt.colorbar(p, ax=ax, label=axis_labels[dep])
+        plt.title('{0} = f({1}, {2})'.format(dep, ind1, ind2))
 
     # Customize the z axis.
     ax.zaxis.set_major_locator(LinearLocator(10))
@@ -189,13 +194,12 @@ def surf_plot(data, ind1, ind2, dep, colorplot=None, linlog=('lin', 'lin', 'lin'
     ax.yaxis.label.set_size(labelsize)
     ax.zaxis.label.set_size(labelsize)
     
-    plt.title('{0} = f({1}, {2})'.format(dep, ind1, ind2))
     plt.savefig('surface_plot.png', dpi=700)
 
     plt.show()
 
 if __name__=='__main__':
-    plt = property_plot_matrix(data, ('power', 'keff'))
+    #plt = property_plot_matrix(data, ('power', 'keff'))
     #plt = property_plot_row(data, ['core_r', 'PD'], 'mass', ('lin', 'lin'),
     #'keff')
-    #surf_plot(data, 'core_r', 'PD', 'mass', None, ('lin', 'lin', 'lin'))
+    surf_plot(data, 'core_r', 'PD', 'enrich', 'keff', ('lin', 'lin', 'lin'))

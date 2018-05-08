@@ -189,7 +189,7 @@ def plot_results(data, ind, dep, colorplot=None):
 #    plt.xscale('log')
 #    plt.yscale('log')
 
-    plt.savefig('figure.eps', dpi=1500, format='eps')
+    plt.savefig('figure.png', dpi=1500, format='eps')
     
     plt.show()
 
@@ -234,9 +234,9 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-    save_store_data()
+#    save_store_data()
     data = load_from_csv()
-#    data = filter_data([('keff', 'great', 1.0)], data)
+    data = filter_data([('keff', 'great', 1.0)], data)
 #    surf_plot(data)
     plt = plot_results(data, 'power', 'keff')
 

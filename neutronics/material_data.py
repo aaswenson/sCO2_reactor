@@ -1,12 +1,15 @@
 """Mass fraction compositions for reactor materials.
 """
+
 # fuel fraction in cermet 
 vfrac_UN = 0.6 # (Webb and Charit 2012)
 # densities [g/cc]
 rho_W = 19.3   # PNNL mat compend #331 
 rho_UN = 14.31 # PNNL mat compend #337
 rho_In = 8.19  # PNNL mat compend #156
-
+# molecular masses
+MM_W = 183.84
+MM_CO2 = 44.009
 # Uranium Nitride
 UN = {92000 : 0.94441, 7015 : 0.05559}
 
@@ -58,4 +61,9 @@ def enrich_fuel(enrich, fuel=UN):
         else:
             fuel_comp.update({isotope : fuel[isotope]})
     
-    return fuel_comp 
+    mmN = 28.0134
+    mmU25 = 235.04
+    mmU28 = 238.05
+    mmfuel = mmN + 1 / ((enrich / mmU25) + ((1-enrich) / mmU28))
+    
+    return fuel_comp, mmfuel
