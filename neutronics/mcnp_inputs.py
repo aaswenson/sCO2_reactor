@@ -50,7 +50,7 @@ class HomogeneousInput:
         self.Q_therm = power * self.kW_to_MW
         self.matlib = pnnl_mats
 
-    def calc_vol_vfrac(self, r_cool, PD, c):
+    def calc_vol_vfrac(self, channel_r=0.5, PD_ratio=1.48, clad_t=0.031):
         """Get volumes for core and reflector regions. Calculate the volume
         fraction of core components. The volume fractions are used to homogenize
         the core material.
@@ -63,17 +63,21 @@ class HomogeneousInput:
             vfrac_cermet (float): cermet matrix volume fraction
             vfrac_clad (float): cladding volume fraction
         """
+        # store geometric params
+        self.r_cool = channel_r
+        self.PD = PD_ratio
+        self.c = clad_t
         # core and reflector volume required for depletion calculation
         self.core_vol = self.r**2 * math.pi * self.z
         self.refl_vol = ((self.r + self.refl_t)**2 - self.r**2)*math.pi * self.z
         
-        pitch = 2*r_cool*PD
+        pitch = 2*self.r_cool*self.PD
         # calculate 'volumes' for fixed length
-        v_cool = (r_cool ** 2 * math.pi)
+        v_cool = (self.r_cool ** 2 * math.pi)
         # clad volume fraction
-        v_clad = ((r_cool + c)**2 - r_cool**2)*math.pi
+        v_clad = ((self.r_cool + self.c)**2 - self.r_cool**2)*math.pi
         # fuel volume fraction
-        v_cermet = (math.sqrt(3)*pitch**2 / 2.0) - (r_cool + c) ** 2 * math.pi 
+        v_cermet = (math.sqrt(3)*pitch**2 / 2.0) - (self.r_cool + self.c) ** 2 * math.pi 
 
         self.cell_vol = v_cool + v_clad + v_cermet
         # calculate normalized vfracs from total cell volume
@@ -82,8 +86,7 @@ class HomogeneousInput:
         self.vfrac_cermet = v_cermet / self.cell_vol
 
         
-    def homog_core(self, enrich=0.9, r_cool=0.5, 
-                         PD=1.48, rho_cool=0.087, c=0.031):
+    def homog_core(self, enrich=0.9, rho_cool=0.087):
         """Homogenize the fuel, clad, and coolant.
         
         Arguments:
@@ -99,8 +102,6 @@ class HomogeneousInput:
             rho (float): fuel density
             fuel_string (str): MCNP material string 
         """
-        # get volumes, volume fractions
-        self.calc_vol_vfrac(r_cool, PD, c)
         
         # volume-weighted densities/masses
         fracs = {'fuel' : {
