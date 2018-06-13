@@ -112,6 +112,7 @@ def calc_fuel_mass(core_r, r, PD, Q):
     c = 0.0031
     l = core_r
     core_v = math.pi*core_r*core_r*l
+    UN_to_cermet = 0.6
 
     pitch = 2*r*PD
     # calculate 'volumes' for fixed length
@@ -125,13 +126,14 @@ def calc_fuel_mass(core_r, r, PD, Q):
     # calculate vfracs from total cell volume
     vfrac_cermet = v_cermet / cell_vol
     
-    fuel_vol = core_v * vfrac_cermet
-
+    fuel_vol = core_v * vfrac_cermet * UN_to_cermet
+    
+    
     power_density = Q / (core_v / 1000) # W / l or MW/m^3
 
     return (fuel_vol * md.rho_UN) / 1000, power_density
 
-def save_store_data(data_dir='./data/*'):#'/mnt/sdb/calculation_results/lhs_results_2/*'):
+def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
     """
     """
     files = glob.glob(data_dir)
@@ -155,6 +157,8 @@ def save_store_data(data_dir='./data/*'):#'/mnt/sdb/calculation_results/lhs_resu
         mass, q_dens = calc_fuel_mass(params[3], params[2], params[1], params[5])
         data[idx]['mass'] = mass
         data[idx]['q_dens'] = round(q_dens, 5)
+        
+        
 
     np.savetxt("depl_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names))
@@ -189,7 +193,8 @@ def plot_results(data, ind, dep, colorplot=None):
 #    plt.xscale('log')
 #    plt.yscale('log')
 
-    plt.savefig('figure.png', dpi=1500, format='eps')
+    plt.savefig('figure.eps', dpi=1500, format='eps')
+    
     
     plt.show()
 
@@ -224,20 +229,24 @@ def filter_data(filters, data):
 
     """Apply useful filters on the data
     """
-    opers = {'less' : operator.lt,
-             'equal' : operator.eq,
-             'great' : operator.gt}
+    opers = {'<' : operator.lt,
+             '=' : operator.eq,
+             '>' : operator.gt}
     
-    for op in filters:
-        data = data[opers[op[1]](data[op[0]], op[2])]   
+    for filter in filters:
+        op= filter.split()[1]
+        key = filter.split()[0]
+        val = float(filter.split()[2])
+        data = data[opers[op](data[key], val)]
     
     return data
 
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-    data = filter_data([('keff', 'great', 1.0)], data)
+#   filter = ['keff > 0.9']
+#    data = filter_data(filter, data)
 #    surf_plot(data)
-    plt = plot_results(data, 'power', 'keff')
+    plt = plot_results(data, 'PD', 'cool_r')
 
     plt.show()

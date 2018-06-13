@@ -17,7 +17,8 @@ ops = {'lin' : lambda x: x,
        'log' : lambda x: np.log(x)
       }
 data = pd.read_csv("depl_results.csv")
-data = filter_data([('keff', 'great', 1.0)], data)
+filter = ['keff > 1']
+data = filter_data(filter, data)
 
 def sk_lin_reg(predictors, target, train_frac, form_predict=('lin', 'lin')):
 
@@ -56,14 +57,15 @@ def sm_lin_reg(predictors, target, form_predict=('lin', 'lin')):
 
     X = ops[form_predict[0]](data[predictors])
     Y = ops[form_predict[1]](data[target])
+    coef = np.ones(len(data))
     
     model = sm.OLS(Y, X)
     results = model.fit()
 
     return results, model
 
-predictors = ['mass']
-linlog = ('log', 'log')
+predictors = ['core_r', 'PD', 'enrich', 'power']#, 'cool_r']
+linlog = ('lin', 'lin')
 
 res, model = sm_lin_reg(predictors, 'keff', linlog)
 print(res.summary())
