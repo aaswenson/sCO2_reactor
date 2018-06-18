@@ -9,7 +9,7 @@ import numpy as np
 import glob
 import neutronic_sweeps as ns
 
-names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens']
+names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -175,7 +175,8 @@ def plot_results(data, ind, dep, colorplot=None):
                      'keff' : 'k-eff [-]',
                      'ave_E' : 'average neutron energy [MeV]',
                      'mass' : 'reactor fuel mass [kg]',
-                     'q_dens' : 'volumetric power density [kW/l]'
+                     'q_dens' : 'volumetric power density [kW/l]',
+                     'dU' : 'Depleted U-235 mass [kg]'
                     }
     # plot
     fig = plt.figure()
@@ -247,6 +248,6 @@ if __name__ == '__main__':
 #   filter = ['keff > 0.9']
 #    data = filter_data(filter, data)
 #    surf_plot(data)
-    plt = plot_results(data, 'PD', 'cool_r')
+    plt = plot_results(data, 'power', 'mass', 'dU')
 
     plt.show()
