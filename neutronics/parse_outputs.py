@@ -8,6 +8,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
 import glob
 import neutronic_sweeps as ns
+import pandas
 
 names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU']
 types = ['f8']*len(names)
@@ -176,7 +177,8 @@ def plot_results(data, ind, dep, colorplot=None):
                      'ave_E' : 'average neutron energy [MeV]',
                      'mass' : 'reactor fuel mass [kg]',
                      'q_dens' : 'volumetric power density [kW/l]',
-                     'dU' : 'Depleted U-235 mass [kg]'
+                     'dU' : 'Depleted U-235 mass [kg]',
+                     'rel_depl' : 'Percent of U-235 mass depleted'
                     }
     # plot
     fig = plt.figure()
@@ -194,7 +196,7 @@ def plot_results(data, ind, dep, colorplot=None):
 #    plt.xscale('log')
 #    plt.yscale('log')
 
-    plt.savefig('figure.eps', dpi=1500, format='eps')
+    plt.savefig('figure.png', dpi=1000, format='png')
     
     
     plt.show()
@@ -222,7 +224,7 @@ def surf_plot(data):
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
     """
-    data = np.genfromtxt(datafile, delimiter=',', names=names)
+    data = pandas.read_csv(datafile)
     
     return data
 
@@ -248,6 +250,6 @@ if __name__ == '__main__':
 #   filter = ['keff > 0.9']
 #    data = filter_data(filter, data)
 #    surf_plot(data)
-    plt = plot_results(data, 'power', 'mass', 'dU')
+    plt = plot_results(data, 'power', 'rel_depl', 'dU')
 
     plt.show()
