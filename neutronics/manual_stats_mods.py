@@ -7,6 +7,8 @@ import statsmodels.stats.api as sms
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from sklearn import datasets, linear_model
 from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 from parse_outputs import filter_data, plot_results
 import neutronic_sweeps as ns
@@ -14,7 +16,8 @@ import plotting as plot
 
 # apply linear or log shift to data
 ops = {'lin' : lambda x: x,
-       'log' : lambda x: np.log(x)
+       'log' : lambda x: np.log(x),
+       'sqr' : lambda x: np.power(x, 2)
       }
 data = pd.read_csv("depl_results.csv")
 filter = ['keff > 1']
@@ -36,6 +39,49 @@ def sm_lin_reg(predictors, target, form_predict='lin'):
 
     return results, model
 
-predictors = [('core_r', 'log'), ('PD', 'log'), ('enrich', 'lin'), ('power', 'lin')]
+def surf_plot(ind1, ind2, ind3, colorplot=None):
+    """
+    """
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    X = ind1
+    Y = ind2
+    Z = ind3
+
+    scaled_size = np.multiply(colorplot, 1000)
+
+    # Plot the surface.
+    cplt = colorplot
+    p = ax.scatter(X,Y,Z, s=scaled_size, c=cplt,
+            cmap=plt.cm.get_cmap('viridis',
+        len(colorplot)))
+    plt.colorbar(p, ax=ax, label='residuals')
+
+    # Customize the z axis.
+    ax.zaxis.set_major_locator(LinearLocator(10))
+    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    
+    plt.savefig('surface_plot.png', dpi=700)
+
+    plt.show()
+
+predictors = [('core_r', 'log'), ('PD', 'log'), ('enrich', 'lin'), ('power',
+    'lin')]
 res, model = sm_lin_reg(predictors, 'keff', 'lin')
 print(res.summary())
+
+cmap_data = 'core_r'
+color_plot = data[cmap_data]
+## raw residuals vs. fitted
+residsvfitted = plt.scatter(res.predict(), res.resid, c=color_plot,
+        cmap=plt.cm.get_cmap('plasma', len(set(color_plot))))
+plt.colorbar(label=cmap_data)
+l = plt.axhline(y = 0, color = 'grey', linestyle = 'dashed')
+plt.xlabel('Fitted values')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Fitted')
+#plt.show(residsvfitted)
+
+surf_plot(data['core_r'], data['PD'], data['enrich'], res.resid)

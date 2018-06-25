@@ -247,9 +247,11 @@ def filter_data(filters, data):
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-#   filter = ['keff > 0.9']
-#    data = filter_data(filter, data)
+    filter = ['keff > 1']
+    data = filter_data(filter, data)
 #    surf_plot(data)
-    plt = plot_results(data, 'power', 'rel_depl', 'dU')
+    print(min(data['keff']))
+    print(max(data['keff']))
+    #plt = plot_results(data, 'power', 'rel_depl', 'mass')
 
     plt.show()

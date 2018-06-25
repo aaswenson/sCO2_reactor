@@ -7,7 +7,7 @@ import statsmodels.stats.api as sms
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 from sklearn import datasets, linear_model
 from sklearn.metrics import mean_squared_error, r2_score
-
+import matplotlib.pyplot as plt
 from parse_outputs import filter_data, plot_results
 import neutronic_sweeps as ns
 import plotting as plot
@@ -69,5 +69,24 @@ linlog = ('lin', 'lin')
 
 res, model = sm_lin_reg(predictors, 'keff', linlog)
 print(res.summary())
-print("Now using sklearn linear regression.......")
-sk_lin_reg(predictors, 'keff', 0.9, linlog)
+
+## raw residuals vs. fitted
+residsvfitted = plt.plot(res.predict(), res.resid,  'o')
+l = plt.axhline(y = 0, color = 'grey', linestyle = 'dashed')
+plt.xlabel('Fitted values')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Fitted')
+plt.show(residsvfitted)
+
+
+
+#print("Now using sklearn linear regression.......")
+#sk_lin_reg(predictors, 'keff', 0.9, linlog)
+
+fig, ax = plt.subplots(figsize=(12,8))
+fig = sm.graphics.plot_ccpr_grid(res, fig=fig)
+#plt.show()
+
+fig, ax = plt.subplots(figsize=(12,8))
+fig = sm.graphics.influence_plot(res, ax=ax, criterion="cooks")
+#plt.show()
