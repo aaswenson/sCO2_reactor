@@ -67,21 +67,25 @@ def surf_plot(ind1, ind2, ind3, colorplot=None):
 
     plt.show()
 
-predictors = [('core_r', 'log'), ('PD', 'log'), ('enrich', 'lin'), ('power',
-    'lin')]
+#predictors = [('core_r', 'lin'), ('PD', 'lin'), ('enrich', 'lin'), ('power',
+#    'lin')]
+predictors = [('enrich', 'log'), ('power', 'log'), ('core_r',
+    'log'), ('PD', 'log')]
 res, model = sm_lin_reg(predictors, 'keff', 'lin')
 print(res.summary())
 
-cmap_data = 'core_r'
+cmap_data = 'mass'
 color_plot = data[cmap_data]
 ## raw residuals vs. fitted
-residsvfitted = plt.scatter(res.predict(), res.resid, c=color_plot,
-        cmap=plt.cm.get_cmap('plasma', len(set(color_plot))))
-plt.colorbar(label=cmap_data)
+#residsvfitted = plt.scatter(res.predict(), res.resid, c=color_plot,
+#        cmap=plt.cm.get_cmap('plasma', len(set(color_plot))))
+#plt.colorbar(label=cmap_data)
+residsvfitted = plt.scatter(res.predict(), res.resid, s=3)
 l = plt.axhline(y = 0, color = 'grey', linestyle = 'dashed')
 plt.xlabel('Fitted values')
 plt.ylabel('Residuals')
 plt.title('Residuals vs Fitted')
-#plt.show(residsvfitted)
+plt.savefig('residuals_vs_fitted.png', dpi=700)
+plt.show(residsvfitted)
 
-surf_plot(data['core_r'], data['PD'], data['enrich'], res.resid)
+#surf_plot(data['core_r'], data['PD'], data['enrich'], res.resid)

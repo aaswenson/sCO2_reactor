@@ -189,14 +189,15 @@ def plot_results(data, ind, dep, colorplot=None):
     else:
         plt.scatter(data[ind], data[dep], s=6)
     # titles and labels
-    plt.title("{0} vs. {1}".format(dep, ind))
+    #plt.title("{0} vs. {1}".format(dep, ind))
+    plt.title(r'EOL k$_{eff}$ vs. Fuel Mass')
 #    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
 #    plt.xscale('log')
 #    plt.yscale('log')
 
-    plt.savefig('figure.png', dpi=1000, format='png')
+    plt.savefig('keff_vs_mass_enrich.eps', dpi=1000, format='eps')
     
     
     plt.show()
@@ -248,10 +249,14 @@ if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
     filter = ['keff > 1']
-    data = filter_data(filter, data)
+#    data = filter_data(filter, data)
 #    surf_plot(data)
-    print(min(data['keff']))
-    print(max(data['keff']))
-    #plt = plot_results(data, 'power', 'rel_depl', 'mass')
+    mindx = np.argmin(data['mass'])
+    print(mindx)
+    print(data['keff'][mindx])
+    print(data['mass'][mindx])
+    print(data['enrich'][mindx])
+    print(min(data['mass']))
+    plt = plot_results(data, 'mass', 'keff', 'enrich')
 
     plt.show()
