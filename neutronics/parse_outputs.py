@@ -10,7 +10,7 @@ import glob
 import neutronic_sweeps as ns
 import pandas
 
-names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU']
+names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU', 'dK']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -153,7 +153,9 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         data[idx]['core_r'] = round(params[3], 5)
         data[idx]['enrich'] = round(params[4], 5)
         data[idx]['power'] = round(params[5], 5)
-        data[idx]['keff'] = parse_keff(string)[2][-1]
+        keff_vals = parse_keff(string)[2]
+        data[idx]['keff'] = keff_vals[-1]
+        data[idx]['dK'] = keff_vals[-1] - keff_vals[0]
         data[idx]['ave_E'] = parse_etal('1', string)[-1]
         mass, q_dens = calc_fuel_mass(params[3], params[2], params[1], params[5])
         data[idx]['mass'] = mass
@@ -178,6 +180,7 @@ def plot_results(data, ind, dep, colorplot=None):
                      'mass' : 'reactor fuel mass [kg]',
                      'q_dens' : 'volumetric power density [kW/l]',
                      'dU' : 'Depleted U-235 mass [kg]',
+                     'dK' : '10 Year Reactivity Swing [-]',
                      'rel_depl' : 'Percent of U-235 mass depleted'
                     }
     # plot
@@ -248,8 +251,8 @@ def filter_data(filters, data):
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-    filter = ['keff > 1']
-#    data = filter_data(filter, data)
+    filter = ['keff > 1', 'mass > 50', 'mass < 500']
+    data = filter_data(filter, data)
 #    surf_plot(data)
     mindx = np.argmin(data['mass'])
     print(mindx)
@@ -257,6 +260,6 @@ if __name__ == '__main__':
     print(data['mass'][mindx])
     print(data['enrich'][mindx])
     print(min(data['mass']))
-    plt = plot_results(data, 'mass', 'keff', 'enrich')
+    plt = plot_results(data, 'mass', 'dK', 'power')
 
     plt.show()
