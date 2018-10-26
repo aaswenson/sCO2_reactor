@@ -207,9 +207,9 @@ def plot_results(data, ind, dep, colorplot=None):
 #    plt.yscale('log')
     
     if colorplot:
-        plt.savefig('{0}_vs_{1}_{2}.svg'.format(dep, ind, colorplot), dpi=1000, format='svg')
+        plt.savefig('{0}_vs_{1}_{2}.png'.format(dep, ind, colorplot), dpi=1000, format='png')
     else:
-        plt.savefig('{0}_vs_{1}.svg'.format(dep, ind), dpi=1000, format='svg')
+        plt.savefig('{0}_vs_{1}.png'.format(dep, ind), dpi=1000, format='png')
     
 
 def surf_plot(data):
@@ -259,7 +259,7 @@ if __name__ == '__main__':
 #    data = filter_data(filter, data)
 #    surf_plot(data)
     plot_results(data, 'power', 'keff')
-#   plot_results(data, 'core_r', 'keff')
+    plot_results(data, 'core_r', 'keff')
 #   plot_results(data, 'core_r', 'keff', 'PD')
 #   plot_results(data, 'core_r', 'keff', 'enrich')
 #   plot_results(data, 'mass', 'keff', 'enrich')
