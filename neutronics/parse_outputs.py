@@ -167,42 +167,50 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
 def plot_results(data, ind, dep, colorplot=None):
     """Generate Plots
     """
-    label_strings = {'AR' : 'Core Aspect Ratio[-]',
-                     'PD' : 'Fuel Pitch to Coolant Channel Diameter',
-                     'cool_r' : 'Coolant Channel [cm]',
-                     'core_r' : 'Core Radius [cm]',
-                     'enrich' : 'U-235 Enrichment [-]',
-                     'power' : 'Core Thermal Power [kW]',
-                     'keff' : 'k-eff [-]',
-                     'ave_E' : 'average neutron energy [MeV]',
-                     'mass' : 'reactor fuel mass [kg]',
-                     'q_dens' : 'volumetric power density [kW/l]',
-                     'dU' : 'Depleted U-235 mass [kg]',
+    label_strings = {'AR'       : 'Core Aspect Ratio[-]',
+                     'PD'       : 'Fuel Pitch to Coolant Channel Diameter',
+                     'cool_r'   : 'Coolant Channel [cm]',
+                     'core_r'   : 'Core Radius [cm]',
+                     'enrich'   : 'U-235 Enrichment [-]',
+                     'power'    : 'Core Thermal Power [kW]',
+                     'keff'     : 'k-eff [-]',
+                     'ave_E'    : 'average neutron energy [MeV]',
+                     'mass'     : 'reactor fuel mass [kg]',
+                     'q_dens'   : 'volumetric power density [kW/l]',
+                     'dU'       : 'Depleted U-235 mass [kg]',
+                     'BOL_U'    : 'Initial U-235 mass [kg]',
                      'rel_depl' : 'Percent of U-235 mass depleted'
                     }
+
+    titles = {'keff' : {'core_r' : 'EOL keff Dependence on Core Radius',
+                        'power'  : 'EOL keff Dependence on Thermal Power'
+                       }
+             }
     # plot
     fig = plt.figure()
     if colorplot:
-        plt.scatter(data[ind], data[dep], c=data[colorplot], s=6,
+        plt.scatter(data[ind], data[dep], c=data[colorplot], s=3,
                 cmap=plt.cm.get_cmap('plasma', len(set(data[colorplot]))))
         plt.colorbar(label=label_strings[colorplot])
     else:
-        plt.scatter(data[ind], data[dep], s=6)
+        plt.scatter(data[ind], data[dep], s=3)
+
     # titles and labels
-    plt.title("{0} vs. {1}".format(dep, ind))
-#    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
+    if dep in titles.keys():
+        plt.title(titles[dep].get(ind, "{0} vs. {1}".format(dep, ind)))
+    else:
+        plt.title("{0} vs. {1}".format(dep, ind))
+    
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
 #    plt.xscale('log')
 #    plt.yscale('log')
-
-    plt.savefig('figure.png', dpi=1000, format='png')
     
+    if colorplot:
+        plt.savefig('{0}_vs_{1}_{2}.svg'.format(dep, ind, colorplot), dpi=1000, format='svg')
+    else:
+        plt.savefig('{0}_vs_{1}.svg'.format(dep, ind), dpi=1000, format='svg')
     
-    plt.show()
-
-    return plt
-
 
 def surf_plot(data):
     fig = plt.figure()
@@ -248,10 +256,14 @@ if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
     filter = ['keff > 1']
-    data = filter_data(filter, data)
+#    data = filter_data(filter, data)
 #    surf_plot(data)
-    print(min(data['keff']))
-    print(max(data['keff']))
-    #plt = plot_results(data, 'power', 'rel_depl', 'mass')
+    plot_results(data, 'power', 'keff')
+#   plot_results(data, 'core_r', 'keff')
+#   plot_results(data, 'core_r', 'keff', 'PD')
+#   plot_results(data, 'core_r', 'keff', 'enrich')
+#   plot_results(data, 'mass', 'keff', 'enrich')
+#   plot_results(data, 'enrich', 'keff')
+#   plot_results(data, 'BOL_U', 'keff', 'core_r')
+#   plot_results(data, 'power', 'rel_depl', 'mass')
 
-    plt.show()
