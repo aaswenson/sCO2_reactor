@@ -1,7 +1,22 @@
 import math
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, basinhopping
 # import physical properties
 import physical_properties as pp
+
+class BasinHopBounds:
+
+    def __init__(self, xmin, xmax, stepsize=0.5):
+        self.xmin = xmin
+        self.xmax = xmax
+        self.stepsize = stepsize
+
+    def __call__(self, x):
+        while True:
+            xnew = x + np.random.uniform(-self.stepsize,
+                                          self.stepsize, np.shape(x))
+            if np.all(xnew < self.xmax) and np.all(xnew > self.xmin):
+                break
+        return xnew
 
 def pipeflow_turbulent(Re, Pr, LD, relrough):
     """Turbulent pipeflow correlation from EES. This function proiveds a nusselt
@@ -173,6 +188,9 @@ def find_n_channels(flow):
         none
 
     """
+    take_step = BasinHopBounds(0.1, 1)
+    res = basinhopping(_calc_n_channels, [0.5,0.5], niter=100,
+            minimizer_kwargs={method:'L-BFGS-B', bounds=
     res = minimize_scalar(_calc_n_channels_error, bounds=(0.1, 1), args=(flow),
                           method='Bounded', options={'xatol': 1e-5})
 
