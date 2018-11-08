@@ -10,7 +10,8 @@ import glob
 import neutronic_sweeps as ns
 import pandas
 
-names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU']
+names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU', 'dK',
+                         'mass_235', 'm_dens', 'fuel_frac']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -129,10 +130,25 @@ def calc_fuel_mass(core_r, r, PD, Q):
     
     fuel_vol = core_v * vfrac_cermet * UN_to_cermet
     
-    
+    fuel_frac = fuel_vol / core_v
+
     power_density = Q / (core_v / 1000) # W / l or MW/m^3
 
-    return (fuel_vol * md.rho_UN) / 1000, power_density
+    mass = (fuel_vol * md.rho_UN) / 1000
+    mass_dens = mass / (core_v / 1000)
+
+    return mass, mass_dens, power_density, fuel_frac
+
+def m235_mass(mass, enrich):
+    
+    mmu235 = 235.0439
+    mmu238 = 238.0508
+    mmN = 14.0067
+    mmU = (mmu235 / enrich) + (mmu238 / (1-enrich))
+
+    mfrac_U_in_UN = mmU / (mmU + mmN)
+    
+    return mass*mfrac_U_in_UN*enrich
 
 def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
     """
@@ -153,32 +169,39 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         data[idx]['core_r'] = round(params[3], 5)
         data[idx]['enrich'] = round(params[4], 5)
         data[idx]['power'] = round(params[5], 5)
-        data[idx]['keff'] = parse_keff(string)[2][-1]
+        keff_vals = parse_keff(string)[2]
+        data[idx]['keff'] = keff_vals[-1]
+        data[idx]['dK'] = keff_vals[-1] - keff_vals[0]
         data[idx]['ave_E'] = parse_etal('1', string)[-1]
-        mass, q_dens = calc_fuel_mass(params[3], params[2], params[1], params[5])
+        mass, mdens, q_dens, fuel_frac = calc_fuel_mass(params[3], params[2], params[1], params[5])
         data[idx]['mass'] = mass
+        data[idx]['fuel_frac'] = fuel_frac
+        data[idx]['m_dens'] = mdens
         data[idx]['q_dens'] = round(q_dens, 5)
-        
+        data[idx]['mass_235'] = m235_mass(mass, params[4])    
         
 
     np.savetxt("depl_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names))
   
-def plot_results(data, ind, dep, colorplot=None):
+def plot_results(data, ind, dep, colorplot=None, log=None):
     """Generate Plots
     """
-    label_strings = {'AR'       : 'Core Aspect Ratio[-]',
-                     'PD'       : 'Fuel Pitch to Coolant Channel Diameter',
-                     'cool_r'   : 'Coolant Channel [cm]',
-                     'core_r'   : 'Core Radius [cm]',
-                     'enrich'   : 'U-235 Enrichment [-]',
-                     'power'    : 'Core Thermal Power [kW]',
-                     'keff'     : 'k-eff [-]',
-                     'ave_E'    : 'average neutron energy [MeV]',
-                     'mass'     : 'reactor fuel mass [kg]',
-                     'q_dens'   : 'volumetric power density [kW/l]',
-                     'dU'       : 'Depleted U-235 mass [kg]',
-                     'BOL_U'    : 'Initial U-235 mass [kg]',
+    label_strings = {'AR' : 'Core Aspect Ratio[-]',
+                     'PD' : 'Fuel Pitch to Coolant Channel Diameter',
+                     'cool_r' : 'Coolant Channel [cm]',
+                     'core_r' : 'Core Radius [cm]',
+                     'enrich' : 'U-235 Enrichment [-]',
+                     'power' : 'Core Thermal Power [kW]',
+                     'keff' : 'k-eff [-]',
+                     'ave_E' : 'average neutron energy [MeV]',
+                     'mass' : 'reactor fuel mass [kg]',
+                     'fuel_frac' : 'volume fraction fuel [-]',
+                     'q_dens' : 'volumetric power density [kW/l]',
+                     'm_dens' : 'fuel mass density [kg/m^3]',
+                     'dU' : 'Depleted U-235 mass [kg]',
+                     'dK' : '10 Year Reactivity Swing [-]',
+                     'mass_235' : 'Mass of U-235 [kg]',
                      'rel_depl' : 'Percent of U-235 mass depleted'
                     }
 
@@ -189,28 +212,33 @@ def plot_results(data, ind, dep, colorplot=None):
     # plot
     fig = plt.figure()
     if colorplot:
-        plt.scatter(data[ind], data[dep], c=data[colorplot], s=3,
+        colorsave = '_'+colorplot
+        plt.scatter(data[ind], data[dep], c=data[colorplot], s=6,
                 cmap=plt.cm.get_cmap('plasma', len(set(data[colorplot]))))
         plt.colorbar(label=label_strings[colorplot])
     else:
-        plt.scatter(data[ind], data[dep], s=3)
-
+        colorsave = ''
+        plt.scatter(data[ind], data[dep], s=6)
     # titles and labels
-    if dep in titles.keys():
-        plt.title(titles[dep].get(ind, "{0} vs. {1}".format(dep, ind)))
-    else:
-        plt.title("{0} vs. {1}".format(dep, ind))
-    
+    plt.title("{0} vs. {1}".format(dep, ind))
+#    plt.title(r'EOL k$_{eff}$ vs. Fuel Mass')
+#    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
-#    plt.xscale('log')
-#    plt.yscale('log')
-    
-    if colorplot:
-        plt.savefig('{0}_vs_{1}_{2}.png'.format(dep, ind, colorplot), dpi=1000, format='png')
-    else:
-        plt.savefig('{0}_vs_{1}.png'.format(dep, ind), dpi=1000, format='png')
-    
+
+    if log == 'log-log':
+        plt.xscale('log')
+        plt.yscale('log')
+    if log == 'semilogy':
+        plt.yscale('log')
+    if log == 'semilogx':
+        plt.xscale('log')
+
+    savename = '{0}_vs_{1}{2}.png'.format(dep, ind, colorsave)
+    plt.savefig(savename, dpi=1000, format='png')
+
+    return plt
+
 
 def surf_plot(data):
     fig = plt.figure()
@@ -255,15 +283,17 @@ def filter_data(filters, data):
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-    filter = ['keff > 1']
+#    filter = ['mass > 100', 'mass < 500']
+#    filter = ['enrich > 0.85']
+#    filter = ['fuel_frac > 0.35']
 #    data = filter_data(filter, data)
 #    surf_plot(data)
-    plot_results(data, 'power', 'keff')
-    plot_results(data, 'core_r', 'keff')
-#   plot_results(data, 'core_r', 'keff', 'PD')
-#   plot_results(data, 'core_r', 'keff', 'enrich')
-#   plot_results(data, 'mass', 'keff', 'enrich')
-#   plot_results(data, 'enrich', 'keff')
-#   plot_results(data, 'BOL_U', 'keff', 'core_r')
-#   plot_results(data, 'power', 'rel_depl', 'mass')
-
+    plt = plot_results(data, 'mass', 'keff')
+    plt = plot_results(data, 'mass_235', 'keff', None, 'log-log')
+    plt = plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
+    plt = plot_results(data, 'mass_235', 'keff', 'fuel_frac')
+    plt = plot_results(data, 'mass_235', 'keff', 'power')
+    plt = plot_results(data, 'mass', 'dU', 'power')
+#    filter = ['mass > 100']
+#    dk_data = filter_data(filter, data)
+    plt = plot_results(dk_data, 'mass_235', 'dK', 'enrich', 'semilogx')
