@@ -200,7 +200,7 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
                      'q_dens' : 'volumetric power density [kW/l]',
                      'm_dens' : 'fuel mass density [kg/m^3]',
                      'dU' : 'Depleted U-235 mass [kg]',
-                     'dK' : '10 Year Reactivity Swing [-]',
+                     'dK' : r'$\delta$k',
                      'mass_235' : 'Mass of U-235 [kg]',
                      'rel_depl' : 'Percent of U-235 mass depleted'
                     }
@@ -222,6 +222,8 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
     # titles and labels
     plt.title("{0} vs. {1}".format(dep, ind))
 #    plt.title(r'EOL k$_{eff}$ vs. Fuel Mass')
+    plt.title(r'10 Year Reactivity Swing vs. Reactor Mass')
+    plt.axhline(y=-0.01, color='r')
 #    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
@@ -233,11 +235,11 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
         plt.yscale('log')
     if log == 'semilogx':
         plt.xscale('log')
-
+    
     savename = '{0}_vs_{1}{2}.png'.format(dep, ind, colorsave)
-    plt.savefig(savename, dpi=1000, format='png')
+    plt.savefig(savename, dpi=700, bbox_inches='tight')
 
-    return plt
+    return
 
 
 def surf_plot(data):
@@ -283,17 +285,18 @@ def filter_data(filters, data):
 if __name__ == '__main__':
 #    save_store_data()
     data = load_from_csv()
-#    filter = ['mass > 100', 'mass < 500']
+    filter = ['mass > 100', 'mass < 500']
 #    filter = ['enrich > 0.85']
 #    filter = ['fuel_frac > 0.35']
-#    data = filter_data(filter, data)
+    data = filter_data(filter, data)
 #    surf_plot(data)
-    plt = plot_results(data, 'mass', 'keff')
-    plt = plot_results(data, 'mass_235', 'keff', None, 'log-log')
-    plt = plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
-    plt = plot_results(data, 'mass_235', 'keff', 'fuel_frac')
-    plt = plot_results(data, 'mass_235', 'keff', 'power')
-    plt = plot_results(data, 'mass', 'dU', 'power')
+    plot_results(data, 'mass_235', 'dK')
+    plot_results(data, 'mass', 'keff')
+    plot_results(data, 'mass_235', 'keff', None, 'log-log')
+    plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
+    plot_results(data, 'mass_235', 'keff', 'fuel_frac')
+    plot_results(data, 'mass_235', 'keff', 'power')
+    plot_results(data, 'mass', 'dU', 'power')
 #    filter = ['mass > 100']
 #    dk_data = filter_data(filter, data)
-    plt = plot_results(dk_data, 'mass_235', 'dK', 'enrich', 'semilogx')
+    plot_results(data, 'mass_235', 'dK', 'enrich', 'semilogx')
