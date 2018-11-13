@@ -178,13 +178,12 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         data[idx]['fuel_frac'] = fuel_frac
         data[idx]['m_dens'] = mdens
         data[idx]['q_dens'] = round(q_dens, 5)
-        data[idx]['mass_235'] = m235_mass(mass, params[4])    
-        
+        data[idx]['mass_235'] = m235_mass(mass, params[4])
 
     np.savetxt("depl_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names))
   
-def plot_results(data, ind, dep, colorplot=None, log=None):
+def plot_results(data, ind, dep, colorplot=None, log=None, title=None):
     """Generate Plots
     """
     label_strings = {'AR' : 'Core Aspect Ratio[-]',
@@ -193,16 +192,16 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
                      'core_r' : 'Core Radius [cm]',
                      'enrich' : 'U-235 Enrichment [-]',
                      'power' : 'Core Thermal Power [kW]',
-                     'keff' : 'k-eff [-]',
+                     'keff' : r'k$_{eff}$ [-]',
                      'ave_E' : 'average neutron energy [MeV]',
                      'mass' : 'reactor fuel mass [kg]',
                      'fuel_frac' : 'volume fraction fuel [-]',
                      'q_dens' : 'volumetric power density [kW/l]',
-                     'm_dens' : 'fuel mass density [kg/m^3]',
-                     'dU' : 'Depleted U-235 mass [kg]',
+                     'm_dens' : r'fuel mass density [kg/m$^3$]',
+                     'dU' : 'Depleted $^{235}$U mass [kg]',
                      'dK' : r'$\delta$k',
-                     'mass_235' : 'Mass of U-235 [kg]',
-                     'rel_depl' : 'Percent of U-235 mass depleted'
+                     'mass_235' : r'Mass of $^{235}$U [kg]',
+                     'rel_depl' : r'Percent of $^{235}$U mass depleted',
                     }
 
     titles = {'keff' : {'core_r' : 'EOL keff Dependence on Core Radius',
@@ -219,10 +218,13 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
     else:
         colorsave = ''
         plt.scatter(data[ind], data[dep], s=6)
+
     # titles and labels
-    plt.title("{0} vs. {1}".format(dep, ind))
-#    plt.title(r'EOL k$_{eff}$ vs. Fuel Mass')
-    plt.title(r'10 Year Reactivity Swing vs. Reactor Mass')
+    if title:
+        plt.title(title)
+    else:
+        plt.title("{0} vs. {1}".format(dep, ind))
+
     plt.axhline(y=-0.01, color='r')
 #    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
     plt.xlabel(label_strings[ind])
@@ -290,13 +292,15 @@ if __name__ == '__main__':
 #    filter = ['fuel_frac > 0.35']
     data = filter_data(filter, data)
 #    surf_plot(data)
-    plot_results(data, 'mass_235', 'dK')
-    plot_results(data, 'mass', 'keff')
-    plot_results(data, 'mass_235', 'keff', None, 'log-log')
-    plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
-    plot_results(data, 'mass_235', 'keff', 'fuel_frac')
-    plot_results(data, 'mass_235', 'keff', 'power')
-    plot_results(data, 'mass', 'dU', 'power')
+#   plot_results(data, 'mass_235', 'dK')
+#   plot_results(data, 'mass', 'keff')
+#   plot_results(data, 'mass_235', 'keff', None, 'log-log')
+#   plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
+#   plot_results(data, 'mass_235', 'keff', 'fuel_frac')
+#   plot_results(data, 'mass_235', 'keff', 'power')
+    plot_results(data, 'mass_235', 'keff', 'm_dens', None, r'EOL k$_{eff}$ Dependence on $^{235}$U Mass')
+    plot_results(data, 'mass_235', 'keff', None, None, r'EOL k$_{eff}$ Dependence on $^{235}$U Mass')
+#    plot_results(data, 'mass', 'dU', 'power')
 #    filter = ['mass > 100']
 #    dk_data = filter_data(filter, data)
-    plot_results(data, 'mass_235', 'dK', 'enrich', 'semilogx')
+    plot_results(data, 'mass', 'dK', None, None, r'10y Reactivity Swing')
