@@ -9,6 +9,7 @@ import numpy as np
 import glob
 import neutronic_sweeps as ns
 import pandas
+from mcnp_inputs import HomogeneousInput
 
 names = ns.dimensions + ['keff', 'r_mass', 'c_mass', 'p_mass', 'mass']
 types = ['f8']*len(names)
@@ -29,10 +30,6 @@ def parse_keff(lines):
     """Parse the output for keff value.
     """
 
-    fp = open(basename + 'o', 'r')
-    lines = fp.readlines()
-    fp.close()
-
     res_idx = []
     for idx, line in enumerate(lines):
         if 'final result' in line:
@@ -42,16 +39,37 @@ def parse_keff(lines):
 
     return keff, stdv
 
-def calc_fuel_mass(data):
+def calc_mass(data):
     """
     """
+    config = {'fuel' : 'UO2',
+              'matr' : None,
+              'cool' : 'CO2',
+              'clad' : 'Inconel-718',
+             }
+    config['core_r'] = data['core_r']
+    config['fuel_frac'] = data['fuel_frac']
+    config['ref_mult'] = data['ref_mult']
 
-    return data
+    input = HomogeneousInput(config=config)
+    input.homog_core()
+    
+    data['mass'] = input.tot_mass
+    data['r_mass'] = input.refl_mass
+    data['p_mass'] = input.PV_mass
+    data['c_mass'] = input.core_mass 
 
-def parse_header_str(lines, data):
+def parse_header_string(lines, data):
     """
     """
-    data['fuel
+    for line in lines:
+        if '1-' in line:
+            break
+    r, f, m = [float(x) for x in line.split()[1].split(',')[:-1]]
+
+    data['core_r'] = r
+    data['fuel_frac'] = f
+    data['ref_mult'] = m
 
 def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
     """
@@ -65,11 +83,11 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         fp = open(file, 'r')
         string = fp.readlines()
         fp.close()
-        params = parse_header_string(string)
-        
+        parse_header_string(string, data[idx])
+        calc_mass(data[idx])
+        data[idx]['keff'] = parse_keff(string)[0]
 
-
-    np.savetxt("depl_results.csv", data, delimiter=',', 
+    np.savetxt("crit_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names))
   
 def plot_results(data, ind, dep, colorplot=None, log=None):
@@ -153,8 +171,8 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-    save_store_data()
-    data = load_from_csv()
+    save_store_data('./crit_rad_results/*.i.o')
+#    data = load_from_csv()
 #    data = filter_data(filter, data)
-    surf_plot(data)
+#    surf_plot(data)
 #    plt = plot_results(data, 'mass', 'keff')

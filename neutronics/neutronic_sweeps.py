@@ -104,6 +104,7 @@ def write_inputs(sampling_data):
         # identifying header string for post-processing
         header_str = ''
         for param in sorted(parameters.keys()):
+            print(param)
             header_str += str(round(sample[param], 5)) + ','
         # write the input and tar it
         filename = str(num) + '.i'
