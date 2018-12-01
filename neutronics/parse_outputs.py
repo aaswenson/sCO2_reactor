@@ -10,8 +10,7 @@ import glob
 import neutronic_sweeps as ns
 import pandas
 
-names = ns.dimensions + ['keff', 'ave_E', 'mass', 'q_dens', 'dU', 'dK',
-                         'mass_235', 'm_dens', 'fuel_frac']
+names = ns.dimensions + ['keff', 'r_mass', 'c_mass', 'p_mass', 'mass']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -27,128 +26,32 @@ def load_outputs(data_dir):
     return file_strings
 
 def parse_keff(lines):
-    """Parse the keff data from the output file.
+    """Parse the output for keff value.
     """
-    keff = []
-    err = []
-    days = []
-    BU = []
-    
-    res_loc = []
+
+    fp = open(basename + 'o', 'r')
+    lines = fp.readlines()
+    fp.close()
+
+    res_idx = []
     for idx, line in enumerate(lines):
         if 'final result' in line:
-            res_loc.append(idx)
-        if 'print table 210' in line:
-            burndx = idx + 8
+            res_idx.append(idx)
+    keff = float(lines[res_idx[-1]].split()[2])
+    stdv = float(lines[res_idx[-1]].split()[3])
 
-    # skip the predictor calcs 
-    save_res = res_loc[0::2]
+    return keff, stdv
 
-    for line_num in save_res:
-        keff.append(float(lines[line_num].split()[2]))
-        err.append(float(lines[line_num].split()[3]))
-
-    for burndata in lines[burndx:]:
-        if burndata == '\n':
-            break
-        BU.append(float(burndata.split()[8]))
-        days.append(float(burndata.split()[2]))
-
-    return (days, BU, keff, err)
-
-def parse_etal(tally, lines):
-    """Parse energy tallies from the output file.
-    """
-    bins = []
-    vals = []
-    errs = []
-    tally_locations = []
-    # get number of energy bins
-    bupper = lines.index(' energy bins\n')
-    blower = lines.index('      total bin\n')
-    nbins = blower - bupper
-    
-    tally_num = '{0}tally'.format(tally)
-
-    for idx, line in enumerate(lines):
-        if tally_num in line and 'nps' in line:
-            tally_locations.append(idx + 11)
-            
-    for tally in tally_locations:
-        bindata = []
-        valdata = []
-        errdata = []
-        for idx in range(tally, tally + nbins - 1):
-            bindata.append(float(lines[idx].split()[0]))
-            valdata.append(float(lines[idx].split()[1]))
-            errdata.append(float(lines[idx].split()[2]))
-        
-        bins.append(bindata)
-        vals.append(valdata)
-        errs.append(errdata)
-
-    average = np.average(bins, weights=vals)
-
-    return (bins, vals, errs, average)
-
-def parse_header_string(string):
-    """Get important parameters from MCNP6 input header string.
-    """
-    for line in string:
-        if '1-' in line:
-            data = line.split()[1]
-            AR = float(data.split(',')[0])
-            core_r = float(data.split(',')[1])
-            cool_r = float(data.split(',')[2])
-            PD = float(data.split(',')[3])
-            power = float(data.split(',')[4])
-            enrich = float(data.split(',')[5])
-            
-            break
-
-    return [AR, PD, cool_r, core_r, enrich, power]
-
-def calc_fuel_mass(core_r, r, PD, Q):
+def calc_fuel_mass(data):
     """
     """
-    c = 0.0031
-    l = core_r
-    core_v = math.pi*core_r*core_r*l
-    UN_to_cermet = 0.6
 
-    pitch = 2*r*PD
-    # calculate 'volumes' for fixed length
-    v_cool = (r ** 2 * math.pi)
-    # clad volume fraction
-    v_clad = ((r + c)**2 - r**2)*math.pi
-    # fuel volume fraction
-    v_cermet = (math.sqrt(3)*pitch**2 / 2.0) - (r + c) ** 2 * math.pi 
+    return data
 
-    cell_vol = v_cool + v_clad + v_cermet
-    # calculate vfracs from total cell volume
-    vfrac_cermet = v_cermet / cell_vol
-    
-    fuel_vol = core_v * vfrac_cermet * UN_to_cermet
-    
-    fuel_frac = fuel_vol / core_v
-
-    power_density = Q / (core_v / 1000) # W / l or MW/m^3
-
-    mass = (fuel_vol * md.rho_UN) / 1000
-    mass_dens = mass / (core_v / 1000)
-
-    return mass, mass_dens, power_density, fuel_frac
-
-def m235_mass(mass, enrich):
-    
-    mmu235 = 235.0439
-    mmu238 = 238.0508
-    mmN = 14.0067
-    mmU = (mmu235 / enrich) + (mmu238 / (1-enrich))
-
-    mfrac_U_in_UN = mmU / (mmU + mmN)
-    
-    return mass*mfrac_U_in_UN*enrich
+def parse_header_str(lines, data):
+    """
+    """
+    data['fuel
 
 def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
     """
@@ -163,23 +66,8 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         string = fp.readlines()
         fp.close()
         params = parse_header_string(string)
-        data[idx]['AR'] =  round(params[0], 5)
-        data[idx]['PD'] = round(params[1], 5)
-        data[idx]['cool_r'] = round(params[2], 5)
-        data[idx]['core_r'] = round(params[3], 5)
-        data[idx]['enrich'] = round(params[4], 5)
-        data[idx]['power'] = round(params[5], 5)
-        keff_vals = parse_keff(string)[2]
-        data[idx]['keff'] = keff_vals[-1]
-        data[idx]['dK'] = keff_vals[-1] - keff_vals[0]
-        data[idx]['ave_E'] = parse_etal('1', string)[-1]
-        mass, mdens, q_dens, fuel_frac = calc_fuel_mass(params[3], params[2], params[1], params[5])
-        data[idx]['mass'] = mass
-        data[idx]['fuel_frac'] = fuel_frac
-        data[idx]['m_dens'] = mdens
-        data[idx]['q_dens'] = round(q_dens, 5)
-        data[idx]['mass_235'] = m235_mass(mass, params[4])    
         
+
 
     np.savetxt("depl_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names))
@@ -187,22 +75,11 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
 def plot_results(data, ind, dep, colorplot=None, log=None):
     """Generate Plots
     """
-    label_strings = {'AR' : 'Core Aspect Ratio[-]',
-                     'PD' : 'Fuel Pitch to Coolant Channel Diameter',
-                     'cool_r' : 'Coolant Channel [cm]',
-                     'core_r' : 'Core Radius [cm]',
+    label_strings = {'core_r' : 'Core Radius [cm]',
                      'enrich' : 'U-235 Enrichment [-]',
-                     'power' : 'Core Thermal Power [kW]',
                      'keff' : 'k-eff [-]',
-                     'ave_E' : 'average neutron energy [MeV]',
                      'mass' : 'reactor fuel mass [kg]',
                      'fuel_frac' : 'volume fraction fuel [-]',
-                     'q_dens' : 'volumetric power density [kW/l]',
-                     'm_dens' : 'fuel mass density [kg/m^3]',
-                     'dU' : 'Depleted U-235 mass [kg]',
-                     'dK' : '10 Year Reactivity Swing [-]',
-                     'mass_235' : 'Mass of U-235 [kg]',
-                     'rel_depl' : 'Percent of U-235 mass depleted'
                     }
     # plot
     fig = plt.figure()
@@ -240,8 +117,9 @@ def surf_plot(data):
     ax = fig.gca(projection='3d')
 
     X = data['core_r']
-    Y = data['PD']
-    Z = data['keff']
+    Y = data['fuel_frac']
+    Z = data['ref_mult']
+    k = data['keff']
 
     # Plot the surface.
     ax.scatter(X,Y,Z, c=Z)
@@ -250,7 +128,6 @@ def surf_plot(data):
     ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
     plt.show()
-
 
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
@@ -276,19 +153,8 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-#    save_store_data()
+    save_store_data()
     data = load_from_csv()
-#    filter = ['mass > 100', 'mass < 500']
-#    filter = ['enrich > 0.85']
-#    filter = ['fuel_frac > 0.35']
 #    data = filter_data(filter, data)
-#    surf_plot(data)
-    plt = plot_results(data, 'mass', 'keff')
-    plt = plot_results(data, 'mass_235', 'keff', None, 'log-log')
-    plt = plot_results(data, 'mass_235', 'keff', 'm_dens', 'log-log')
-    plt = plot_results(data, 'mass_235', 'keff', 'fuel_frac')
-    plt = plot_results(data, 'mass_235', 'keff', 'power')
-    plt = plot_results(data, 'mass', 'dU', 'power')
-#    filter = ['mass > 100']
-#    dk_data = filter_data(filter, data)
-    plt = plot_results(dk_data, 'mass_235', 'dK', 'enrich', 'semilogx')
+    surf_plot(data)
+#    plt = plot_results(data, 'mass', 'keff')

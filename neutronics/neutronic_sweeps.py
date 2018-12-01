@@ -19,20 +19,13 @@ from mcnp_inputs import HomogeneousInput
 # set seed for reproducibility
 np.random.seed(1324291)
 
-dimensions = ['AR', 'core_r', 'cool_r', 'PD', 'power', 'enrich']
-const_dims = ['power', 'cool_r']
-
-const_vals = {'power' : 160, 'cool_r' : 0.5}
-
-parameters = {'core_r'  : (20, 50, 5),         
-              'AR'      : (0.7, 1.3, 0.3),
-              'PD'      : (1.1, 1.6, 0.1),        
-              'enrich'  : (0.3, 0.9, 0.1),
-              'cool_r' : (0.5, 1, 0.1)
+parameters = {'core_r'    : (10, 50, 5),         
+              'fuel_frac' : (0.1, 0.95, 0.05),
+              'ref_mult'  : (0.001, 1.5, 0.1),        
              }
-
-dim = len(parameters.keys())
-samples = 4000
+dimensions = list(parameters.keys())
+dims = len(parameters)
+samples = 500
 
 def gen_hypercube(samples, N):
     """Generate N-dimensional latin hypercube to sample dimensional reactor
@@ -57,13 +50,13 @@ def grid_sampling():
     """Generate evenly-sampled grid space.
     """
     rangeset = []
-    for dim in dimensions:
+    for dim in parameters.keys():
         bounds = parameters[dim]
         rangeset.append(np.arange(bounds[0], bounds[1], bounds[2]))
     grid = list(itertools.product(*rangeset))
     
     array = np.zeros(len(grid), dtype={'names' : dimensions, 
-                                       'formats' : ['f8']*len(dimensions)})
+                                       'formats' : ['f8']*dims})
     for idx, params in enumerate(grid):
         array[idx] = params
 
@@ -74,11 +67,11 @@ def fill_data_array(samples, parameters, cube):
     """
     # initialize array
     test_cases = np.zeros(samples, dtype={'names' : dimensions,
-                                    'formats' : ['f8']*len(dimensions) })
+                                          'formats' : ['f8']*dims})
     # for all samples
     for sample_idx, sample in enumerate(cube):
         # get values for every dimension
-        for dim_idx, dim in enumerate(sorted(parameters.keys())):
+        for dim_idx, dim in enumerate(sorted(dimensions)):
             l_limit = parameters[dim][0]
             u_limit = parameters[dim][1]
             # uniform distribution
@@ -86,9 +79,6 @@ def fill_data_array(samples, parameters, cube):
             b = l_limit
             # save to ndarray
             test_cases[sample_idx][dim] = b + cube[sample_idx][dim_idx] * a
-        for dim in const_dims:
-            test_cases[sample_idx][dim] = const_vals[dim]
-    
     
     return test_cases
 
@@ -98,20 +88,26 @@ def write_inputs(sampling_data):
     datanames = sampling_data.dtype.names
     tarputs = tarfile.open('smpl_mcnp_depl_inps.tar', 'w')
     for num, sample in enumerate(sampling_data):
-        input = HomogeneousInput(sample['core_r'],
-                                 sample['core_r']*sample['AR'],
-                                 sample['power'])
-        homog_comp = input.homog_core(sample['enrich'],
-                                      sample['cool_r'],
-                                      sample['PD'])
-        input.write_mat_string(homog_comp)
+
+        config = {'fuel' : 'UO2',
+                  'matr' : None,
+                  'cool' : 'CO2',
+                  'clad' : 'Inconel-718',
+                 }
+        config['core_r'] = sample['core_r']
+        config['fuel_frac'] = sample['fuel_frac']
+        config['ref_mult'] = sample['ref_mult']
+
+        input = HomogeneousInput(config=config)
+        input.homog_core()
         
         # identifying header string for post-processing
         header_str = ''
-        for param in dimensions:
+        for param in sorted(parameters.keys()):
             header_str += str(round(sample[param], 5)) + ','
         # write the input and tar it
-        filename = input.write_input(num, header_str)
+        filename = str(num) + '.i'
+        input.write_input(filename, header_str)
         tarputs.add(filename)
 
     # write HTC input list
@@ -123,9 +119,9 @@ def write_inputs(sampling_data):
     tarputs.close()
 
 if __name__=='__main__':
-    cube = gen_hypercube(samples, dim)
-#    data = grid_sampling()
-#    print(len(data))
+    cube = gen_hypercube(samples, dims)
+    data = grid_sampling()
+    print(len(data))
     data = fill_data_array(samples, parameters, cube)
     write_inputs(data)
     # cleanup
