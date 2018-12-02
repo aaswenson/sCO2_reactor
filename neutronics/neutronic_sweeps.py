@@ -19,10 +19,11 @@ from mcnp_inputs import HomogeneousInput
 # set seed for reproducibility
 np.random.seed(1324291)
 
-parameters = {'core_r'    : (10, 50, 5),         
-              'fuel_frac' : (0.1, 0.95, 0.05),
-              'ref_mult'  : (0.001, 1.5, 0.1),        
+parameters = {'core_r'    : (10, 50, 10),         
+              'fuel_frac' : (0.1, 0.95, 10),
+              'ref_mult'  : (0.001, 1.5, 10),        
              }
+
 dimensions = list(parameters.keys())
 dims = len(parameters)
 samples = 500
@@ -52,7 +53,7 @@ def grid_sampling():
     rangeset = []
     for dim in parameters.keys():
         bounds = parameters[dim]
-        rangeset.append(np.arange(bounds[0], bounds[1], bounds[2]))
+        rangeset.append(np.linspace(bounds[0], bounds[1], bounds[2]))
     grid = list(itertools.product(*rangeset))
     
     array = np.zeros(len(grid), dtype={'names' : dimensions, 
@@ -123,7 +124,7 @@ if __name__=='__main__':
     cube = gen_hypercube(samples, dims)
     data = grid_sampling()
     print(len(data))
-    data = fill_data_array(samples, parameters, cube)
+#    data = fill_data_array(samples, parameters, cube)
     write_inputs(data)
     # cleanup
     os.system('rm *.i input_list.txt')
