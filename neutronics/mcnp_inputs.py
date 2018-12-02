@@ -199,9 +199,14 @@ class HomogeneousInput:
                                        refl_z = self.z + 2*self.t_refl,
                                        r_refl = self.r + self.t_refl,
                                        refl_top = self.z + self.t_refl,
-                                       PV_t = self.t_refl + self.t_PV,
-                                       PV_z = self.z + 2*(self.t_refl+self.t_PV),
-                                       r_PV = self.r + self.t_refl + self.t_PV,
+                                       PV_i_z = self.t_refl,
+                                       PV_o_z = self.t_refl + self.t_PV,
+                                       PV_i_h = self.z + 2*self.t_refl,
+                                       PV_o_h = self.z + 2*(self.t_refl +
+                                                self.t_PV),
+                                       PV_i_r = self.r + self.t_refl,
+                                       PV_o_r = self.r + self.t_refl +
+                                                self.t_PV,
                                        fuel_string = self.core_mat_string,
                                        refl_mat = self.refl_mat_string,
                                        cool_mat = self.cool_mat_string,
@@ -236,8 +241,8 @@ if __name__=='__main__':
               'clad' : 'Inconel-718',
               'fuel_frac' : 0.3,
               'rho_cool' : 252.638e-3,
-              'ref_mult' : 0.46,
-              'core_r' : 23.6308
+              'ref_mult' : 0.6,
+              'core_r' : 50
              }
 
     input = HomogeneousInput(config=config) 
