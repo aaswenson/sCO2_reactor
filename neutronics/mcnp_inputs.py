@@ -239,10 +239,9 @@ if __name__=='__main__':
               'matr' : None,
               'cool' : 'CO2',
               'clad' : 'Inconel-718',
-              'fuel_frac' : 0.3,
-              'rho_cool' : 252.638e-3,
-              'ref_mult' : 0.6,
-              'core_r' : 50
+              'fuel_frac' : 0.6,
+              'ref_mult' : 0.5,
+              'core_r' : 15
              }
 
     input = HomogeneousInput(config=config) 

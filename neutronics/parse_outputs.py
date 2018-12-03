@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
-from mayavi import mlab
-from skimage import measure
+from scipy.interpolate import RegularGridInterpolator
 import glob
 import neutronic_sweeps as ns
 import pandas
@@ -90,7 +89,7 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         data[idx]['keff'] = parse_keff(string)[0]
 
     np.savetxt("crit_results.csv", data, delimiter=',', 
-           fmt='%10.5f', header=','.join(names))
+           fmt='%10.5f', header=','.join(names), comments='')
   
 def plot_results(data, ind, dep, colorplot=None, log=None):
     """Generate Plots
@@ -149,23 +148,25 @@ def surf_plot(data):
 
     plt.show()
 
-def keff_isosurface(data):
-    """
-    """
-    X = list(['core_r'])
-    Y = list(['fuel_frac'])
-    Z = list(['ref_mult'])
-    k = list(['mass'])
+def interpolate_grid(data):
     
-    XX, YY, ZZ, KK = np.meshgrid(X, Y, Z, k)
-
-    verts, faces = measure.marching_cubes(KK, 0, spacing=(0.1, 0.1, 0.1))
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_trisurf(verts[:,0], verts[:,1], faces, verts[:,2], cmap='Spectral',
-                    lw=1)
-    plt.show()
+    X = sorted(list(set(data['core_r'])))
+    Y = sorted(list(set(data['fuel_frac'])))
+    Z = sorted(list(set(data['ref_mult'])))
+    keff = data['keff']
+    
+    kk = np.zeros([len(X), len(Y), len(Z)])
+    
+    for i, r in enumerate(X):
+        for j, f in enumerate(Y):
+            for k, m in enumerate(Z):
+                K = data[(data['core_r'] == r) &\
+                         (data['fuel_frac'] == f) &\
+                         (data['ref_mult'] == m)]['keff']
+                kk[i, j, k] = K       
+    
+    fn = RegularGridInterpolator((X, Y, Z), kk)
+    print(fn([15, 0.5, 0.5]))
 
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
@@ -191,9 +192,8 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-#    save_store_data('./crit_rad_results/*.i.o')
+#    save_store_data('./crit_results_data/*.i.o')
     data = load_from_csv('./crit_results.csv')
-    print(data.columns)
 #    data = filter_data(filter, data)
 #    keff_isosurface(data)
-    surf_plot(data)
+    interpolate_grid(data)

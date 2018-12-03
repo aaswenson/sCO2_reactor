@@ -19,9 +19,9 @@ from mcnp_inputs import HomogeneousInput
 # set seed for reproducibility
 np.random.seed(1324291)
 
-parameters = {'core_r'    : (10, 50, 10),         
-              'fuel_frac' : (0.1, 0.95, 10),
-              'ref_mult'  : (0.001, 1.5, 10),        
+parameters = {'core_r'    : (10, 50, 15),         
+              'fuel_frac' : (0.1, 0.95, 15),
+              'ref_mult'  : (0.001, 1.5, 15),        
              }
 
 dimensions = list(parameters.keys())
@@ -83,18 +83,14 @@ def fill_data_array(samples, parameters, cube):
     
     return test_cases
 
-def write_inputs(sampling_data):
+def write_inputs(sampling_data, config):
     """Write MCNP depletion inputs for sampled data.
     """
     datanames = sampling_data.dtype.names
-    tarputs = tarfile.open('smpl_mcnp_depl_inps.tar', 'w')
+    tarputs = tarfile.open('{0}_{1}_inps.tar'.format(config['fuel'],
+                                                     config['cool']), 'w')
     for num, sample in enumerate(sampling_data):
 
-        config = {'fuel' : 'UO2',
-                  'matr' : None,
-                  'cool' : 'CO2',
-                  'clad' : 'Inconel-718',
-                 }
         config['core_r'] = sample['core_r']
         config['fuel_frac'] = sample['fuel_frac']
         config['ref_mult'] = sample['ref_mult']
@@ -105,7 +101,6 @@ def write_inputs(sampling_data):
         # identifying header string for post-processing
         header_str = ''
         for param in sorted(parameters.keys()):
-            print(param)
             header_str += str(round(sample[param], 5)) + ','
         # write the input and tar it
         filename = str(num) + '.i'
@@ -121,10 +116,16 @@ def write_inputs(sampling_data):
     tarputs.close()
 
 if __name__=='__main__':
+
+    config = {'fuel' : 'UO2',
+              'matr' : None,
+              'cool' : 'CO2',
+              'clad' : 'Inconel-718',
+             }
     cube = gen_hypercube(samples, dims)
     data = grid_sampling()
     print(len(data))
 #    data = fill_data_array(samples, parameters, cube)
-    write_inputs(data)
+    write_inputs(data, config)
     # cleanup
     os.system('rm *.i input_list.txt')
