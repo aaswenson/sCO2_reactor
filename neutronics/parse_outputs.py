@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
+from mayavi import mlab
+from skimage import measure
 import glob
 import neutronic_sweeps as ns
 import pandas
@@ -133,18 +135,36 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
 def surf_plot(data):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-
+    
     X = data['core_r']
     Y = data['fuel_frac']
     Z = data['ref_mult']
     k = data['keff']
 
     # Plot the surface.
-    ax.scatter(X,Y,Z, c=Z)
+    ax.scatter(X,Y,Z, c=k)
     # Customize the z axis.
     ax.zaxis.set_major_locator(LinearLocator(10))
     ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
+    plt.show()
+
+def keff_isosurface(data):
+    """
+    """
+    X = list(['core_r'])
+    Y = list(['fuel_frac'])
+    Z = list(['ref_mult'])
+    k = list(['mass'])
+    
+    XX, YY, ZZ, KK = np.meshgrid(X, Y, Z, k)
+
+    verts, faces = measure.marching_cubes(KK, 0, spacing=(0.1, 0.1, 0.1))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot_trisurf(verts[:,0], verts[:,1], faces, verts[:,2], cmap='Spectral',
+                    lw=1)
     plt.show()
 
 def load_from_csv(datafile="depl_results.csv"):
@@ -171,8 +191,9 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-    save_store_data('./crit_rad_results/*.i.o')
-#    data = load_from_csv()
+#    save_store_data('./crit_rad_results/*.i.o')
+    data = load_from_csv('./crit_results.csv')
+    print(data.columns)
 #    data = filter_data(filter, data)
-#    surf_plot(data)
-#    plt = plot_results(data, 'mass', 'keff')
+#    keff_isosurface(data)
+    surf_plot(data)
