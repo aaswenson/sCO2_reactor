@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, Rbf
 import glob
 import neutronic_sweeps as ns
 import pandas
@@ -165,7 +165,9 @@ def interpolate_grid(data):
                          (data['ref_mult'] == m)]['keff']
                 kk[i, j, k] = K       
     
-    fn = RegularGridInterpolator((X, Y, Z), kk)
+    fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
+#    fn = Rbf(data['core_r'], data['fuel_frac'], data['ref_mult'], keff,
+#             function='linear')
     
     return fn 
 

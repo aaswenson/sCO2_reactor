@@ -23,7 +23,7 @@ def keff_err(x, config, func):
     """
     p = [x, config['fuel_frac'], config['ref_mult']]
     keff = func(p)
-        
+    
     return (keff[0] - target_keff)**2
 
 def crit_radius(config, func):
@@ -54,18 +54,17 @@ def fuel_frac(coolant, fuel, clad, matr, func):
     for frac in np.linspace(0.3, 0.95, 10):
         results = open(resname, 'a')
         config['fuel_frac'] = frac
-#        res = minimize_scalar(min_refl_mult, args=(config, func), 
-#                              method='bounded', bounds=(0.01, 0.2))
-        config['ref_mult'] = refl_mult(config, func)
+        res = minimize_scalar(min_refl_mult, args=(config, func), 
+                              method='bounded', bounds=(0.01, 0.6))
+        config['ref_mult'] = res
         # get critical radius
         r = crit_radius(config, func)
         results.write('{0:.2f},{1:.5f},{2:.5f}\n'.format(frac, r,
                                                          config['ref_mult']))
         results.close()
     
-    return config
 
-def min_refl_mult(mult, config, func):
+def refl_mult_mass(mult, config, func):
     """
     """
     config['ref_mult' ] = mult
@@ -77,12 +76,24 @@ def min_refl_mult(mult, config, func):
     
     return tot_mass
 
+def min_refl_mult(config, func):
+    'L-BFGS-B'
+    import scipy.optimize
+    
+    _args = {'method' : 'L-BFGS-B',
+             'bounds' : [(0.001, 0.12)],
+             'args'   : (config, func)}
+
+    res = scipy.optimize.basinhopping(refl_mult_mass, [0.3],
+                                      minimizer_kwargs=_args)
+    return res.x[0]
+
 def refl_mult(config, func):
     """Determine the optimal reflector thickness for a given reactor
     configuration.
     """
 
-    mults = np.linspace(0.001, 0.12, 1000)
+    mults = np.linspace(0.001, 0.6, 10)
     data = {'mass' : [], 'r' : [], 'mult' : mults}
     refl_res = open('refl_results.txt', 'a')
     for mult in mults:
@@ -116,9 +127,44 @@ def refl_mult(config, func):
      
     return mults[data['mass'].index(min(data['mass']))]
 
+def test_interp(data, fn):
+    
+    from matplotlib import cm
+
+    radii = np.linspace(10, 50, 50)
+    mults = np.linspace(0.001, 0.07, 50)
+    
+    RR = []
+    MM = []
+    keff = []
+    for r in radii:
+        for m in mults:
+            RR.append(r)
+            MM.append(m)
+            keff.append(fn([r, 0.1, m])[0])
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    
+    # Plot the surface.
+    ax.scatter(RR,MM,keff)
+    # Customize the z axis.
+    ax.zaxis.set_major_locator(LinearLocator(10))
+    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    plt.show()
+
 if __name__ == '__main__':
     data = po.load_from_csv('./crit_results.csv')
     fn = po.interpolate_grid(data)
-    config = fuel_frac('CO2', 'UO2', 'Inconel-718', None,fn)
-    config['fuel_frac'] = 0.3 
+    fuel_frac('CO2', 'UO2', 'Inconel-718', None,fn)
+    
+    config = {'fuel' : 'UO2',
+              'matr' : None,
+              'cool' : 'CO2',
+              'clad' : 'Inconel-718',
+              'rho_cool' : 252.638e-3,
+              'fuel_frac' : 0.444444444
+             }
+
     refl_mult(config, fn)
+    test_interp(data, fn)
