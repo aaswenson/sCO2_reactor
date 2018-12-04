@@ -12,7 +12,8 @@ import neutronic_sweeps as ns
 import pandas
 from mcnp_inputs import HomogeneousInput
 
-names = ns.dimensions + ['keff', 'r_mass', 'c_mass', 'p_mass', 'mass']
+names = ns.dimensions + ['keff', 'r_mass', 'c_mass', 'p_mass', 'mass',
+                         'interp_err']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -72,7 +73,7 @@ def parse_header_string(lines, data):
     data['fuel_frac'] = f
     data['ref_mult'] = m
 
-def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
+def save_store_data(data_dir, interp_func=None):
     """
     """
     files = glob.glob(data_dir)
@@ -88,6 +89,13 @@ def save_store_data(data_dir='/mnt/sdb/calculation_results/sa_results/*.i.o'):
         calc_mass(data[idx])
         data[idx]['keff'] = parse_keff(string)[0]
 
+        if interp_func:
+            int_k = func([data[idx]['core_r'],
+                          data[idx]['fuel_frac'],
+                          data[idx]['ref_mult']
+                        ])[0]
+            data[idx]['interp_err'] = abs(data[idx]['keff'] - int_k)
+
     np.savetxt("crit_results.csv", data, delimiter=',', 
            fmt='%10.5f', header=','.join(names), comments='')
   
@@ -99,6 +107,7 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
                      'keff' : 'k-eff [-]',
                      'mass' : 'reactor fuel mass [kg]',
                      'fuel_frac' : 'volume fraction fuel [-]',
+                     'interp_err' : 'interpolation error [-]' 
                     }
     # plot
     fig = plt.figure()
@@ -195,8 +204,10 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-#    save_store_data('./crit_results_data/*.i.o')
+    interp_data = load_from_csv('./interp_data.csv')
+    func = interpolate_grid(interp_data)
+    save_store_data('./crit_results_data/*.i.o', func)
     data = load_from_csv('./crit_results.csv')
 #    data = filter_data(filter, data)
 #    keff_isosurface(data)
-    interpolate_grid(data)
+    plot_results(data, 'fuel_frac', 'interp_err')

@@ -18,19 +18,14 @@ domain = (5, 28.75)
 
 g_to_kg = 0.001
 
-def keff_err(x, config, func):
-    """Calculate keff error.
-    """
-    p = [x, config['fuel_frac'], config['ref_mult']]
-    keff = func(p)
-    
-    return (keff[0] - target_keff)**2
-
 def crit_radius(config, func):
     """Get critical radius = f(fuel_frac)
     """
+    f = config['fuel_frac']
+    m = config['ref_mult']
+    interp_keff = lambda r: (func([r, f, m])[0] - target_keff)**2
     
-    res = minimize_scalar(keff_err, args=(config, func), 
+    res = minimize_scalar(interp_keff, args=(), 
                           method='bounded', bounds=(10, 50))
     
     return res.x
@@ -54,14 +49,16 @@ def fuel_frac(coolant, fuel, clad, matr, func):
     for frac in np.linspace(0.3, 0.95, 10):
         results = open(resname, 'a')
         config['fuel_frac'] = frac
-        res = minimize_scalar(min_refl_mult, args=(config, func), 
+        res = minimize_scalar(refl_mult_mass, args=(config, func), 
                               method='bounded', bounds=(0.01, 0.6))
-        config['ref_mult'] = res
+        config['ref_mult'] = res.x
         # get critical radius
         r = crit_radius(config, func)
         results.write('{0:.2f},{1:.5f},{2:.5f}\n'.format(frac, r,
                                                          config['ref_mult']))
         results.close()
+
+        refl_mult(config, func)
     
 
 def refl_mult_mass(mult, config, func):
@@ -76,25 +73,13 @@ def refl_mult_mass(mult, config, func):
     
     return tot_mass
 
-def min_refl_mult(config, func):
-    'L-BFGS-B'
-    import scipy.optimize
-    
-    _args = {'method' : 'L-BFGS-B',
-             'bounds' : [(0.001, 0.12)],
-             'args'   : (config, func)}
-
-    res = scipy.optimize.basinhopping(refl_mult_mass, [0.3],
-                                      minimizer_kwargs=_args)
-    return res.x[0]
-
 def refl_mult(config, func):
     """Determine the optimal reflector thickness for a given reactor
     configuration.
     """
 
-    mults = np.linspace(0.001, 0.6, 10)
-    data = {'mass' : [], 'r' : [], 'mult' : mults}
+    mults = np.linspace(0.001, 0.6, 100)
+    data = {'mass' : [], 'r' : [], 'mult' : mults, 'keff' : []}
     refl_res = open('refl_results.txt', 'a')
     for mult in mults:
         config['ref_mult'] = mult
@@ -105,26 +90,29 @@ def refl_mult(config, func):
         input = HomogeneousInput(config=config)
         homog_comp = input.homog_core()
         tot_mass = input.core_mass + input.refl_mass + input.PV_mass
-        data['mass'].append(tot_mass)
-        data['r'].append(r)
-        
+        data['mass'].append(tot_mass/ 1000)
+        data['r'].append(r) 
     
-    popt, cov = fd.fit_data(data, fd.poly, 'mult', 'mass')
-    opt_mult = fd.min_mult(popt, fd.poly)
-    
+
+    poly = np.polyfit(
+     
     fitted = np.add(popt[0]*np.power(mults, 2), np.add(popt[1]*mults, popt[2]))
 
     fig = plt.figure()
     plt.scatter(mults, data['mass'], c=data['r'], s=6,
                 cmap=plt.cm.get_cmap('plasma', len(set(data['r']))))
     
-    plt.plot(mults, fitted)
+    for m in func.grid[2]:
+        if m > 0.6:
+            break
+        plt.axvline(x=m)
+    
+#    plt.plot(mults, fitted)
     plt.title('Fuel Frac: {0}'.format(config['fuel_frac']))
     plt.xlabel('reflector mult [-]')
-    plt.ylabel('reactor mass [g]')
+    plt.ylabel('reactor mass [kg]')
     plt.savefig('{0}.png'.format(config['fuel_frac']))
-
-     
+    
     return mults[data['mass'].index(min(data['mass']))]
 
 def test_interp(data, fn):
@@ -163,8 +151,7 @@ if __name__ == '__main__':
               'cool' : 'CO2',
               'clad' : 'Inconel-718',
               'rho_cool' : 252.638e-3,
-              'fuel_frac' : 0.444444444
+              'fuel_frac' : 0.75
              }
-
-    refl_mult(config, fn)
-    test_interp(data, fn)
+#    refl_mult(config, fn)
+#    test_interp(data, fn)
