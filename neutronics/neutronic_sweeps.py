@@ -19,9 +19,9 @@ from mcnp_inputs import HomogeneousInput
 # set seed for reproducibility
 np.random.seed(1324291)
 
-parameters = {'core_r'    : (10, 50, 15),         
-              'fuel_frac' : (0.1, 0.95, 15),
-              'ref_mult'  : (0.001, 1.5, 15),        
+parameters = {'core_r'    : (10, 50, 10),         
+              'fuel_frac' : (0.2, 0.95, 10),
+              'ref_mult'  : (0.001, 0.15, 10),        
              }
 
 dimensions = list(parameters.keys())
@@ -124,8 +124,8 @@ if __name__=='__main__':
              }
     cube = gen_hypercube(samples, dims)
     data = grid_sampling()
+    #data = fill_data_array(samples, parameters, cube)
     print(len(data))
-#    data = fill_data_array(samples, parameters, cube)
     write_inputs(data, config)
     # cleanup
     os.system('rm *.i input_list.txt')

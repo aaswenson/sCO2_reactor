@@ -166,7 +166,8 @@ def interpolate_grid(data):
                 kk[i, j, k] = K       
     
     fn = RegularGridInterpolator((X, Y, Z), kk)
-    print(fn([15, 0.5, 0.5]))
+    
+    return fn 
 
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
