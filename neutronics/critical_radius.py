@@ -100,7 +100,7 @@ def refl_mult(config, func):
     configuration.
     """
 
-    mults = np.linspace(0.001, 0.4, 100)
+    mults = np.linspace(0.001, 0.4, 50)
     data = {'mass' : [], 'r' : [], 'mult' : [], 'keff' : []}
     refl_res = open('refl_results.txt', 'a')
      
