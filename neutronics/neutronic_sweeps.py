@@ -19,9 +19,9 @@ from mcnp_inputs import HomogeneousInput
 # set seed for reproducibility
 np.random.seed(1324291)
 
-parameters = {'core_r'    : (10, 50, 10),         
+parameters = {'core_r'    : (10, 50, 30),         
               'fuel_frac' : (0.2, 0.95, 10),
-              'ref_mult'  : (0.001, 0.15, 10),        
+              'ref_mult'  : (0.001, 0.15, 33),        
              }
 
 dimensions = list(parameters.keys())
