@@ -55,7 +55,7 @@ def fuel_frac(coolant, fuel, clad, matr, func):
                'radius' : []
               }
 
-    for frac in np.linspace(0.3, 0.95, 200):
+    for frac in np.linspace(0.3, 0.9, 50):
         resfile = open(resname, 'a')
         config['fuel_frac'] = frac
         config['ref_mult'] = refl_mult(config, func)
@@ -100,7 +100,7 @@ def refl_mult(config, func):
     configuration.
     """
 
-    mults = np.linspace(0.001, 0.4, 50)
+    mults = np.linspace(0.001, 0.15, 10)
     data = {'mass' : [], 'r' : [], 'mult' : [], 'keff' : []}
     refl_res = open('refl_results.txt', 'a')
      
@@ -119,8 +119,10 @@ def refl_mult(config, func):
     poly = np.polyfit(data['mult'], data['mass'], 3)
     fit_mults = np.linspace(data['mult'][0], data['mult'][-1], 1000)
     fit_mass = np.polyval(poly, fit_mults)
-   
-
+    
+    print('{0:.3f} {1:.3f}'.format(config['fuel_frac'],
+                           np.std(data['mass'])))
+    
     massfunc = lambda m: np.polyval(poly, m)
     opt_mult = minimize_scalar(massfunc, method='bounded', 
                                bounds=(data['mult'][0],
@@ -133,7 +135,7 @@ def refl_mult(config, func):
     
     plt.plot(fit_mults, fit_mass, label='{0:.2f}'.format(config['fuel_frac']))
 
-    plt.title('Fuel Frac: {0}'.format(config['fuel_frac']))
+    plt.title('Reactor Mass Dependence on Reflector Multiplier')
     plt.xlabel('reflector mult [-]')
     plt.ylabel('reactor mass [kg]')
     
