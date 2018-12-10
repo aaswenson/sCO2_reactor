@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
-target_keff = 1.01
+target_keff = 1.1
 # critical radius range to sweep
 domain = (5, 28.75)
 
 g_to_kg = 0.001
 
-
 fig = plt.figure()
+ax = plt.subplot(111)
 
 def calc_keff(config):
     """Calculate keff deviation from target.
@@ -70,6 +70,14 @@ def find_nearest(array, value):
     
     return abs(array[idx] - value)
 
+def calc_rxtr_mass(config):
+    
+    input = HomogeneousInput(config=config)
+    input.homog_core()
+    mass = input.tot_mass / 1000
+    
+    return mass
+
 def crit_radius(config, func):
     """Get critical radius = f(fuel_frac)
     """
@@ -102,41 +110,51 @@ def fuel_frac(coolant, fuel, clad, matr, func):
     results = {'frac'   : [],
                'mult'   : [],
                'radius' : [],
+               'mass'   : [],
                'r_radius' : [],
                'r_mult' : [],
                'p1' : [], 'p2' : [], 'p3' : []
               }
 
-    for frac in np.linspace(0.2, 0.95, 100):
+    for frac in np.linspace(0.3, 0.95, 20):
 #    for frac in func.grid[1]:
         resfile = open(resname, 'a')
         config['fuel_frac'] = frac
         config['ref_mult'], popt= refl_mult(config, func)
+#        config['ref_mult'] = 0.15
         # get critical radius
         crit_radius(config, func)
         
         #save data for plotting
+        results['mass'].append(calc_rxtr_mass(config))
         results['frac'].append(config['fuel_frac'])
         results['p1'].append(popt[0])
         results['p2'].append(popt[1])
         results['p3'].append(popt[2])
         results['mult'].append(config['ref_mult'])
         results['radius'].append(config['core_r'])
-#        results['r_radius'].append(find_nearest(func.grid[0], config['core_r']))
-#        results['r_mult'].append(find_nearest(func.grid[2], config['ref_mult']))
+        results['r_radius'].append(find_nearest(func.grid[0], config['core_r']))
+        results['r_mult'].append(find_nearest(func.grid[2], config['ref_mult']))
         resfile.write('{0:.2f},{1:.5f},{2:.5f}\n'.format(config['fuel_frac'],
                                                          config['core_r'],
                                                          config['ref_mult']))
         resfile.close()
         
     # plot mass mult curves
-    plt.legend()
-    plt.savefig('mass_vs_mult.png', dpi=1000, figsize=(20,10))
-
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.0),ncol=5,
+              fancybox=True)
+    for m in results['mult']:
+        ax.scatter(results['mult'], results['mass'],c='r', marker='X')
+    plt.title('Reactor Mass Dependence on Reflector Multiplier')
+    plt.xlabel('reflector mult [-]')
+    plt.ylabel('normed reactor mass [-]')
+#    plt.ylim((0.0495, 0.0507))
+    plt.savefig('mass_vs_mult.png', dpi=500, figsize=(20,10))
+    
     # plot results
     fig = plt.figure()
-    plt.scatter(results['frac'], results['mult'], #c=results['r_radius'],
-                cmap=plt.cm.get_cmap('Reds', len(set(results['r_radius']))))
+    plt.scatter(results['frac'], results['mult'], #c=results['r_mult'],
+                cmap=plt.cm.get_cmap('Reds', len(set(results['r_mult']))))
 #    plt.colorbar(label='Distance from nearest grid point [cm]')
 
     plt.xlabel('Fuel Fraction [-]')
@@ -145,42 +163,18 @@ def fuel_frac(coolant, fuel, clad, matr, func):
     plt.savefig('refl_mult.png')
     # core radius
     fig = plt.figure()
-    plt.scatter(results['frac'], results['radius'])
+    plt.plot(results['frac'], results['radius'])
     plt.xlabel('Fuel Fraction [-]')
     plt.ylabel('Critical Core Radius [cm]')
-    plt.title('Core Radius for keff = 1.01')
+    plt.title('Core Radius for keff = 1.01, m=0.15')
     plt.savefig('core_r.png')
     
-    # core radius
-    fig = plt.figure()
-    plt.scatter(results['frac'], results['p1'])
-    plt.xlabel('Fuel Fraction [-]')
-    plt.ylabel('p1')
-    plt.title('Core Radius for keff = 1.01')
-    plt.savefig('p1.png')
-    
-    # core radius
-    fig = plt.figure()
-    plt.scatter(results['frac'], results['p2'])
-    plt.xlabel('Fuel Fraction [-]')
-    plt.ylabel('p2')
-    plt.title('Core Radius for keff = 1.01')
-    plt.savefig('p2.png')
-    
-    # core radius
-    fig = plt.figure()
-    plt.scatter(results['frac'], results['p3'])
-    plt.xlabel('Fuel Fraction [-]')
-    plt.ylabel('p3')
-    plt.title('Core Radius for keff = 1.01')
-    plt.savefig('p3.png')
-
 def refl_mult(config, func):
     """Determine the optimal reflector thickness for a given reactor
     configuration.
     """
 
-    mults = np.linspace(0.001, 0.15, 10)
+    mults = np.linspace(0.001, max(func.grid[2]), 20)
     data = {'mass' : [], 'r' : [], 'mult' : [], 'keff' : []}
     refl_res = open('refl_results.txt', 'a')
      
@@ -190,21 +184,18 @@ def refl_mult(config, func):
         # get critical radius
         crit_radius(config, func)
         if config['keff_err'] > 1e-5:
+            print('Warning, keff target not reached for r= {0}, f= {1}'.format(
+                    config['core_r'], config['fuel_frac']))
             continue
-        input = HomogeneousInput(config=config)
-        input.homog_core()
         
-        data['mass'].append(input.tot_mass/ 1000)
+        data['mass'].append(calc_rxtr_mass(config))
         data['mult'].append(mult)
-
+    # normalize data to 1
 #    data['mass'] = [x / sum(data['mass']) for x in data['mass']]
     
-    poly = np.polyfit(data['mult'], data['mass'], 3)
+    poly = np.polyfit(data['mult'], data['mass'], 2)
     fit_mults = np.linspace(data['mult'][0], data['mult'][-1], 1000)
     fit_mass = np.polyval(poly, fit_mults)
-    
-#    print('{0:.3f} {1:.3f}'.format(config['fuel_frac'],
-#                           np.std(data['mass'])))
     
     massfunc = lambda m: np.polyval(poly, m)
     opt_mult = minimize_scalar(massfunc, method='bounded', 
@@ -213,15 +204,8 @@ def refl_mult(config, func):
 ###############################################################
 
     if config['fuel_frac']:# == func.grid[1][-2]:
-#        calc_keff(config)
-        plt.scatter(data['mult'], data['mass'], s=6)
-        plt.plot(fit_mults, fit_mass, label='{0:.2f}'.format(config['fuel_frac']))
-
-    plt.title('Reactor Mass Dependence on Reflector Multiplier')
-    plt.xlabel('reflector mult [-]')
-    plt.ylabel('reactor mass [kg]')
-#    plt.ylim((0.029, 0.0321)) 
-#    opt_mult = data['mult'][data['mass'].index(min(data['mass']))]
+        ax.scatter(data['mult'], data['mass'], s=6)
+        ax.plot(fit_mults, fit_mass, label='{0:.2f}'.format(config['fuel_frac']))
 
     return opt_mult, poly
 

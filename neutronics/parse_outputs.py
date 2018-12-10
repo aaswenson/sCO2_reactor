@@ -181,11 +181,11 @@ def interpolate_grid(data):
 
                 kk[i, j, k] = K - stdv
     
-#    fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
-    fn = LinearNDInterpolator((data['core_r'],
-                               data['fuel_frac'],
-                               data['ref_mult']),
-                               data['keff'])
+    fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
+#    fn = LinearNDInterpolator((data['core_r'],
+#                               data['fuel_frac'],
+#                               data['ref_mult']),
+#                               data['keff'])
     
     return fn 
 

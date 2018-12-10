@@ -117,8 +117,8 @@ def write_inputs(sampling_data, config):
 
 if __name__=='__main__':
 
-    config = {'fuel' : 'UO2',
-              'matr' : None,
+    config = {'fuel' : 'UN',
+              'matr' : 'W',
               'cool' : 'CO2',
               'clad' : 'Inconel-718',
              }
