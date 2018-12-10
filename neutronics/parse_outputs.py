@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator, Rbf
+from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
 import glob
 import neutronic_sweeps as ns
 import pandas
 from mcnp_inputs import HomogeneousInput
 
-names = ns.dimensions + ['keff', 'r_mass', 'c_mass', 'p_mass', 'mass',
+names = ns.dimensions + ['keff', 'stdv', 'r_mass', 'c_mass', 'p_mass', 'mass',
                          'interp_err']
 types = ['f8']*len(names)
 
@@ -87,7 +87,7 @@ def save_store_data(data_dir, interp_func=None):
         fp.close()
         parse_header_string(string, data[idx])
         calc_mass(data[idx])
-        data[idx]['keff'] = parse_keff(string)[0]
+        data[idx]['keff'], data[idx]['stdv'] = parse_keff(string)
 
         if interp_func:
             int_k = func([data[idx]['core_r'],
@@ -107,7 +107,8 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
                      'keff' : 'k-eff [-]',
                      'mass' : 'reactor fuel mass [kg]',
                      'fuel_frac' : 'volume fraction fuel [-]',
-                     'interp_err' : 'interpolation error [-]' 
+                     'interp_err' : 'interpolation error [-]',
+                     'ref_mult' : 'Reflector Multiplier [-]'
                     }
     # plot
     fig = plt.figure()
@@ -159,9 +160,10 @@ def surf_plot(data):
 
 def interpolate_grid(data):
     
-    X = sorted(list(set(data['core_r'])))
-    Y = sorted(list(set(data['fuel_frac'])))
-    Z = sorted(list(set(data['ref_mult'])))
+    skip_dx = 1
+    X = sorted(list(set(data['core_r'])))[0::skip_dx]
+    Y = sorted(list(set(data['fuel_frac'])))[0::skip_dx]
+    Z = sorted(list(set(data['ref_mult'])))[0::skip_dx]
     keff = data['keff']
     
     kk = np.zeros([len(X), len(Y), len(Z)])
@@ -172,11 +174,18 @@ def interpolate_grid(data):
                 K = data[(data['core_r'] == r) &\
                          (data['fuel_frac'] == f) &\
                          (data['ref_mult'] == m)]['keff']
-                kk[i, j, k] = K       
+                
+                stdv = data[(data['core_r'] == r) &\
+                         (data['fuel_frac'] == f) &\
+                         (data['ref_mult'] == m)]['stdv']
+
+                kk[i, j, k] = K - stdv
     
-    fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
-#    fn = Rbf(data['core_r'], data['fuel_frac'], data['ref_mult'], keff,
-#             function='linear')
+#    fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
+    fn = LinearNDInterpolator((data['core_r'],
+                               data['fuel_frac'],
+                               data['ref_mult']),
+                               data['keff'])
     
     return fn 
 
@@ -206,8 +215,9 @@ def filter_data(filters, data):
 if __name__ == '__main__':
     interp_data = load_from_csv('./interp_data.csv')
     func = interpolate_grid(interp_data)
-    save_store_data('./crit_results_data/*.i.o', func)
+#    save_store_data('./crit_results_data/*.i.o', func)
     data = load_from_csv('./crit_results.csv')
-#    data = filter_data(filter, data)
-#    keff_isosurface(data)
-    plot_results(data, 'fuel_frac', 'interp_err')
+    filter = ['keff > 1.00999', 'keff < 1.01001']
+    data = filter_data(filter, data)
+    surf_plot(data)
+    plot_results(data, 'ref_mult', 'keff', 'core_r')
