@@ -12,8 +12,7 @@ import neutronic_sweeps as ns
 import pandas
 from mcnp_inputs import HomogeneousInput
 
-names = ns.dimensions + ['keff', 'stdv', 'r_mass', 'c_mass', 'p_mass', 'mass',
-                         'interp_err']
+names = ns.dimensions + ['keff', 'stdv', 'r_mass', 'c_mass', 'p_mass', 'mass']
 types = ['f8']*len(names)
 
 def load_outputs(data_dir):
@@ -73,7 +72,7 @@ def parse_header_string(lines, data):
     data['fuel_frac'] = f
     data['ref_mult'] = m
 
-def save_store_data(data_dir, interp_func=None):
+def save_store_data(data_dir, name='crit_results.csv'):
     """
     """
     files = glob.glob(data_dir)
@@ -89,17 +88,10 @@ def save_store_data(data_dir, interp_func=None):
         calc_mass(data[idx])
         data[idx]['keff'], data[idx]['stdv'] = parse_keff(string)
 
-        if interp_func:
-            int_k = func([data[idx]['core_r'],
-                          data[idx]['fuel_frac'],
-                          data[idx]['ref_mult']
-                        ])[0]
-            data[idx]['interp_err'] = abs(data[idx]['keff'] - int_k)
-
-    np.savetxt("crit_results.csv", data, delimiter=',', 
+    np.savetxt(name, data, delimiter=',', 
            fmt='%10.5f', header=','.join(names), comments='')
   
-def plot_results(data, ind, dep, colorplot=None, log=None):
+def plot_results(data, ind, dep, plt, colorplot=None, log=None):
     """Generate Plots
     """
     label_strings = {'core_r' : 'Core Radius [cm]',
@@ -107,11 +99,11 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
                      'keff' : 'k-eff [-]',
                      'mass' : 'reactor fuel mass [kg]',
                      'fuel_frac' : 'volume fraction fuel [-]',
-                     'interp_err' : 'interpolation error [-]',
-                     'ref_mult' : 'Reflector Multiplier [-]'
+                     'ref_mult' : 'Reflector Multiplier [-]',
+                     'r_mass' : 'Reflector Mass [kg]'
                     }
     # plot
-    fig = plt.figure()
+#    fig = plt.figure()
     if colorplot:
         colorsave = '_'+colorplot
         plt.scatter(data[ind], data[dep], c=data[colorplot], s=6,
@@ -126,6 +118,7 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
 #    plt.title("keff vs. mass for 0.2 < enrich < 0.3")
     plt.xlabel(label_strings[ind])
     plt.ylabel(label_strings[dep])
+#    plt.ylim(0.6, 1.8)
 
     if log == 'log-log':
         plt.xscale('log')
@@ -136,7 +129,7 @@ def plot_results(data, ind, dep, colorplot=None, log=None):
         plt.xscale('log')
 
     savename = '{0}_vs_{1}{2}.png'.format(dep, ind, colorsave)
-    plt.savefig(savename, dpi=1000, format='png')
+#    plt.savefig(savename, dpi=1000, format='png')
 
     return plt
 
@@ -167,27 +160,45 @@ def interpolate_grid(data):
     keff = data['keff']
     
     kk = np.zeros([len(X), len(Y), len(Z)])
-    
     for i, r in enumerate(X):
         for j, f in enumerate(Y):
             for k, m in enumerate(Z):
                 K = data[(data['core_r'] == r) &\
                          (data['fuel_frac'] == f) &\
                          (data['ref_mult'] == m)]['keff']
-                
                 stdv = data[(data['core_r'] == r) &\
                          (data['fuel_frac'] == f) &\
                          (data['ref_mult'] == m)]['stdv']
-
-                kk[i, j, k] = K - stdv
+                kk[i, j, k] = K
     
     fn = RegularGridInterpolator((X, Y, Z), kk, method='linear')
-#    fn = LinearNDInterpolator((data['core_r'],
-#                               data['fuel_frac'],
-#                               data['ref_mult']),
-#                               data['keff'])
     
     return fn 
+
+def test_interpolator(data, func):
+    """
+    """
+    error = []
+    for idx, row in data.iterrows():
+        r = row['core_r']
+        f = row['fuel_frac']
+        m = row['ref_mult']
+        if r > func.grid[0][-1] or r < func.grid[0][0]:
+            continue
+        if f > func.grid[1][-1] or f < func.grid[1][0]:
+            continue
+        if m > func.grid[2][-1] or m < func.grid[2][0]:
+            continue
+
+        kinterp = func([row['core_r'], row['fuel_frac'], row['ref_mult']])[0]
+        error.append(abs(kinterp - row['keff']) * 1e5)
+    print(len(error))
+    fig = plt.figure()
+    plt.hist(error)
+    plt.title('Criticality Interpolation Error')
+    plt.xlabel('Interpolated Reactivity Error [pcm]')
+    plt.savefig('check_interp.png')
+
 
 def load_from_csv(datafile="depl_results.csv"):
     """load the results data from a csv.
@@ -213,11 +224,26 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-    interp_data = load_from_csv('./interp_data.csv')
-    func = interpolate_grid(interp_data)
-#    save_store_data('./crit_results_data/*.i.o', func)
-    data = load_from_csv('./crit_results.csv')
-    filter = ['keff > 1.00999', 'keff < 1.01001']
-    data = filter_data(filter, data)
-    surf_plot(data)
-    plot_results(data, 'ref_mult', 'keff', 'core_r')
+    save_store_data('./test_interp_data/*.i.o', 'check_interp.csv')
+    # load training and testing sets
+    traindata = load_from_csv('crit_results.csv')
+    testdata = load_from_csv('check_interp.csv')
+    # test the interpolator
+    func = interpolate_grid(traindata)
+#    print(func.grid)
+    test_interpolator(testdata, func)
+    
+#    filters = ['core_r = 38.96552', 'fuel_frac = 0.7'] 
+#    dat1 = filter_data(filters, traindata)
+#    plot_results(dat1, 'ref_mult', 'keff')
+    
+#    filters = ['ref_mult = 0.10344', 'fuel_frac = 0.7'] 
+#    dat2 = filter_data(filters, traindata)
+#    plot_results(dat2, 'core_r', 'keff')
+#    fig = plt.figure()
+#    for f in func.grid[1]:
+#        filters = ['fuel_frac = {0}'.format(f), 'core_r = 15.51724']
+#        fildat = filter_data(filters, traindata)
+#        plot_results(fildat, 'ref_mult', 'keff', plt)
+
+#    plt.savefig('many_fracs.png')

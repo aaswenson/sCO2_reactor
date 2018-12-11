@@ -74,7 +74,7 @@ class HomogeneousInput:
         
         # geometric quantities
         self.r = config.get('core_r')
-        self.z = self.r*config.get('AR', 1)
+        self.z = 2*self.r*config.get('AR', 1)
         self.r_cool = config.get('r_cool', 0.5)
         self.c = config.get('c', 0.031)
         self.vfrac_fuel = config.get('fuel_frac')
@@ -241,7 +241,7 @@ if __name__=='__main__':
               'clad' : 'Inconel-718',
               'fuel_frac' : 0.6,
               'ref_mult' : 0.1,
-              'core_r' : 30
+              'core_r' : 20
              }
 
     input = HomogeneousInput(config=config) 

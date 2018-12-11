@@ -117,14 +117,14 @@ def write_inputs(sampling_data, config):
 
 if __name__=='__main__':
 
-    config = {'fuel' : 'UN',
-              'matr' : 'W',
+    config = {'fuel' : 'UO2',
+              'matr' : None,
               'cool' : 'CO2',
               'clad' : 'Inconel-718',
              }
     cube = gen_hypercube(samples, dims)
-    data = grid_sampling()
-    #data = fill_data_array(samples, parameters, cube)
+    #data = grid_sampling()
+    data = fill_data_array(samples, parameters, cube)
     print(len(data))
     write_inputs(data, config)
     # cleanup
