@@ -224,7 +224,8 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-    save_store_data('./test_interp_data/*.i.o', 'check_interp.csv')
+#    save_store_data('./test_interp_data/*.i.o', 'check_interp.csv')
+    save_store_data('./crit_results_data/*.i.o', 'crit_results.csv')
     # load training and testing sets
     traindata = load_from_csv('crit_results.csv')
     testdata = load_from_csv('check_interp.csv')

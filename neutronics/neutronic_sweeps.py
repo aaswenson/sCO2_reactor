@@ -10,6 +10,7 @@ depletion inputs to calculate keff at EOL.
 from pyDOE import lhs
 import itertools
 import os
+import sys
 import glob
 import numpy as np
 import tarfile
@@ -116,16 +117,22 @@ def write_inputs(sampling_data, config):
     tarputs.close()
 
 if __name__=='__main__':
-
-    config = {'fuel' : 'UO2',
-              'matr' : None,
-              'cool' : 'CO2',
-              'clad' : 'Inconel-718',
+    
+    args = sys.argv[1:]
+    matr = None
+    if len(args) == 5:
+        matr = args[4]
+    config = {'fuel' : args[1],
+              'matr' : matr,
+              'cool' : args[2],
+              'clad' : args[3],
              }
-    cube = gen_hypercube(samples, dims)
-    #data = grid_sampling()
-    data = fill_data_array(samples, parameters, cube)
-    print(len(data))
+    
+    if args[0] == 'test':
+        cube = gen_hypercube(samples, dims)
+        data = fill_data_array(samples, parameters, cube)
+    if args[0] == 'interp':
+        data = grid_sampling()
     write_inputs(data, config)
     # cleanup
     os.system('rm *.i input_list.txt')
