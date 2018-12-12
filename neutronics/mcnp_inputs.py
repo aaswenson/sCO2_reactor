@@ -87,8 +87,8 @@ class HomogeneousInput:
         self.cool =     config.get('cool', 'CO2')
         self.clad =     config.get('clad', 'Inconel-718')
         self.refl =     config.get('refl', 'C')
-        self.rho_cool = config.get('rho_cool', 0.079082)
-        
+        self.rho_cool = config.get('rho_cool', md.mats[self.cool]['rho'])
+        print(self.rho_cool)        
         # calculate core volume
         self.core_vol = self.r * self.r * self.z * math.pi
         
@@ -228,7 +228,6 @@ if __name__=='__main__':
               'matr' : 'W',
               'cool' : 'CO2',
               'clad' : 'Inconel-718',
-              'rho_cool' : 233.89e-3,
               'fuel_frac' : 1,
               'core_r' : 16,
               'ref_mult' : 0.2,
@@ -237,7 +236,7 @@ if __name__=='__main__':
     
     config = {'fuel' : 'UO2',
               'matr' : None,
-              'cool' : 'CO2',
+              'cool' : 'H2O',
               'clad' : 'Inconel-718',
               'fuel_frac' : 0.6,
               'ref_mult' : 0.1,

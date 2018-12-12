@@ -94,7 +94,6 @@ def fuel_frac(coolant, fuel, clad, matr, func):
     """Determine the optimal reflector thickness for a given reactor
     configuration.
     """
-    rhos = {'CO2' : 252.638e-3, 'H2O' : 141.236e-3}
     config = {'fuel' : fuel,
               'matr' : matr,
               'cool' : coolant,
