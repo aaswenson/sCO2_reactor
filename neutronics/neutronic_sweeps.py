@@ -22,7 +22,7 @@ np.random.seed(1324291)
 
 parameters = {'core_r'    : (10, 50, 30),         
               'fuel_frac' : (0.2, 0.95, 10),
-              'ref_mult'  : (0.001, 0.15, 33),        
+              'ref_mult'  : (0.12, 0.28, 33),        
              }
 
 dimensions = list(parameters.keys())

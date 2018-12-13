@@ -88,7 +88,7 @@ class HomogeneousInput:
         self.clad =     config.get('clad', 'Inconel-718')
         self.refl =     config.get('refl', 'C')
         self.rho_cool = config.get('rho_cool', md.mats[self.cool]['rho'])
-        print(self.rho_cool)        
+        
         # calculate core volume
         self.core_vol = self.r * self.r * self.z * math.pi
         
@@ -105,8 +105,8 @@ class HomogeneousInput:
     def calc_masses(self):
         """Calculate pressure vessel and reflector masses
         """
-        self.refl_mass = ((self.r + self.t_refl)**3 * math.pi - self.core_vol)\
-                        * md.mats[self.refl]['rho']
+        self.refl_mass = ((self.r + self.t_refl)**2 * self.z * math.pi\
+                           - self.core_vol) * md.mats[self.refl]['rho']
 
         R = self.r + self.t_refl
         # from faculty.washington.edu/vkumar/me356/pv_rules.pdf

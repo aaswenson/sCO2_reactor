@@ -1,3 +1,5 @@
+import sys
+import zipfile
 import operator
 import math
 import material_data as md
@@ -7,7 +9,6 @@ from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator, LinearNDInterpolator
-import glob
 import neutronic_sweeps as ns
 import pandas
 from mcnp_inputs import HomogeneousInput
@@ -75,19 +76,24 @@ def parse_header_string(lines, data):
 def save_store_data(data_dir, name='crit_results.csv'):
     """
     """
-    files = glob.glob(data_dir)
+    # load the results from zip file
+    zip_folder = zipfile.ZipFile(data_dir)
+    files = zip_folder.namelist()
     N = len(files)
     data = np.zeros(N, dtype={'names' : names, 'formats' : types})
+    
 
     for idx, file in enumerate(files):
         print(file)
-        fp = open(file, 'r')
-        string = fp.readlines()
+        fp = zip_folder.open(file)
+        string = [x.decode('ascii') for x in fp.readlines()]
         fp.close()
         parse_header_string(string, data[idx])
         calc_mass(data[idx])
         data[idx]['keff'], data[idx]['stdv'] = parse_keff(string)
 
+    zip_folder.close()
+    
     np.savetxt(name, data, delimiter=',', 
            fmt='%10.5f', header=','.join(names), comments='')
   
@@ -224,27 +230,23 @@ def filter_data(filters, data):
     return data
 
 if __name__ == '__main__':
-#    save_store_data('./test_interp_data/*.i.o', 'check_interp.csv')
-    save_store_data('./crit_results_data/*.i.o', 'crit_results.csv')
+    
+    if len(sys.argv) != 4:
+        print('Usage: train_datapath test_datapath parse/load')
+        sys.exit()
+
+    args = sys.argv[1:]
+    # get datapaths
+    trainpath = args[0]
+    testpath =  args[1]
+    
+    if args[2] == 'parse':
+        save_store_data(trainpath + '.zip', trainpath + '.csv')    
+        save_store_data(testpath + '.zip', testpath + '.csv')
+    
     # load training and testing sets
-    traindata = load_from_csv('crit_results.csv')
-    testdata = load_from_csv('check_interp.csv')
+    traindata = load_from_csv('{0}.csv'.format(trainpath))
+    testdata = load_from_csv('{0}.csv'.format(testpath))
     # test the interpolator
     func = interpolate_grid(traindata)
-#    print(func.grid)
     test_interpolator(testdata, func)
-    
-#    filters = ['core_r = 38.96552', 'fuel_frac = 0.7'] 
-#    dat1 = filter_data(filters, traindata)
-#    plot_results(dat1, 'ref_mult', 'keff')
-    
-#    filters = ['ref_mult = 0.10344', 'fuel_frac = 0.7'] 
-#    dat2 = filter_data(filters, traindata)
-#    plot_results(dat2, 'core_r', 'keff')
-#    fig = plt.figure()
-#    for f in func.grid[1]:
-#        filters = ['fuel_frac = {0}'.format(f), 'core_r = 15.51724']
-#        fildat = filter_data(filters, traindata)
-#        plot_results(fildat, 'ref_mult', 'keff', plt)
-
-#    plt.savefig('many_fracs.png')

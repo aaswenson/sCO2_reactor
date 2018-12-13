@@ -2,42 +2,15 @@ import sys
 import os
 import numpy as np
 from scipy.optimize import minimize_scalar, curve_fit
-from subprocess import call, DEVNULL
+import matplotlib.pyplot as plt
+
 from mcnp_inputs import HomogeneousInput
-import fit_data as fd
 import parse_outputs as po
 
-from matplotlib import cm
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
-target_keff = 1.1
-# critical radius range to sweep
-domain = (5, 28.75)
-
-g_to_kg = 0.001
+target_keff = 1.01
 
 fig = plt.figure()
 ax = plt.subplot(111)
-
-def calc_keff(config):
-    """Calculate keff deviation from target.
-    """
-    frac = config['fuel_frac']
-    radius = config['core_r']
-
-    basename = "{0}_{1}.i".format(round(frac,5), round(radius,5))
-    write_inp(basename, config)
-    call(["mcnp6", "n= {0} tasks 8".format(basename)], stdout=DEVNULL)
-    keff = parse_output(basename)
-    os.remove('{0}r'.format(basename))
-    os.remove('{0}s'.format(basename))
-    os.remove('{0}o'.format(basename))
-    os.remove(basename)
-    
-    print(frac, keff)
 
 def parse_output(basename):
     """Parse the output for keff value.
@@ -65,15 +38,21 @@ def write_inp(basename, configuration):
 
 
 def find_nearest(array, value):
+    """returns distance from value to nearest point on the grid in the dimension
+    desired. Burden is on the user to ensure the dimension of the value and the
+    array match.
+    """
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     
     return abs(array[idx] - value)
 
 def calc_rxtr_mass(config):
-    
+    """Calculate the mass of a given reactor configuration
+    """
     input = HomogeneousInput(config=config)
     input.homog_core()
+    # g -> kg
     mass = input.tot_mass / 1000
     
     return mass
@@ -90,20 +69,14 @@ def crit_radius(config, func):
     config['keff_err'] = res.fun
     config['core_r'] = res.x
     
-def fuel_frac(coolant, fuel, clad, matr, func):
+def fuel_frac(config, func):
     """Determine the optimal reflector thickness for a given reactor
     configuration.
     """
-    config = {'fuel' : fuel,
-              'matr' : matr,
-              'cool' : coolant,
-              'clad' : clad,
-              'rho_cool' : rhos[coolant],
-             }
-    resname = '{0}_{1}_results.txt'.format(coolant, fuel)
-    
+    # prepare the results file
+    resname = '{0}_{1}_results.txt'.format(config['cool'], config['fuel'])
     resfile = open(resname, '+w')
-    resfile.write('fuel_frac,crit_radius\n') 
+    resfile.write('fuel_frac,crit_radius,ref_mult,mass_std\n') 
     resfile.close()
     
     results = {'frac'   : [],
@@ -112,31 +85,25 @@ def fuel_frac(coolant, fuel, clad, matr, func):
                'mass'   : [],
                'r_radius' : [],
                'r_mult' : [],
-               'p1' : [], 'p2' : [], 'p3' : []
               }
 
     for frac in np.linspace(0.3, 0.95, 20):
-#    for frac in func.grid[1]:
         resfile = open(resname, 'a')
         config['fuel_frac'] = frac
-        config['ref_mult'], popt= refl_mult(config, func)
-#        config['ref_mult'] = 0.15
+        config['ref_mult'], mstd = refl_mult(config, func)
         # get critical radius
         crit_radius(config, func)
         
         #save data for plotting
         results['mass'].append(calc_rxtr_mass(config))
         results['frac'].append(config['fuel_frac'])
-        results['p1'].append(popt[0])
-        results['p2'].append(popt[1])
-        results['p3'].append(popt[2])
         results['mult'].append(config['ref_mult'])
         results['radius'].append(config['core_r'])
         results['r_radius'].append(find_nearest(func.grid[0], config['core_r']))
         results['r_mult'].append(find_nearest(func.grid[2], config['ref_mult']))
-        resfile.write('{0:.2f},{1:.5f},{2:.5f}\n'.format(config['fuel_frac'],
-                                                         config['core_r'],
-                                                         config['ref_mult']))
+        resfile.write('{0:.2f},{1:.5f},{2:.5f},{3:.5f}\n'.\
+        format(config['fuel_frac'],config['core_r'],config['ref_mult'], mstd))
+        
         resfile.close()
         
     # plot mass mult curves
@@ -175,9 +142,7 @@ def refl_mult(config, func):
 
     mults = np.linspace(0.001, max(func.grid[2]), 20)
     data = {'mass' : [], 'r' : [], 'mult' : [], 'keff' : []}
-    refl_res = open('refl_results.txt', 'a')
      
-#    for mult in func.grid[2]:
     for mult in mults:
         config['ref_mult'] = mult
         # get critical radius
@@ -189,6 +154,7 @@ def refl_mult(config, func):
         
         data['mass'].append(calc_rxtr_mass(config))
         data['mult'].append(mult)
+    
     # normalize data to 1
 #    data['mass'] = [x / sum(data['mass']) for x in data['mass']]
     
@@ -201,39 +167,24 @@ def refl_mult(config, func):
                                bounds=(data['mult'][0],
                                        data['mult'][-1])).x
 ###############################################################
-
     if config['fuel_frac']:# == func.grid[1][-2]:
         ax.scatter(data['mult'], data['mass'], s=6)
         ax.plot(fit_mults, fit_mass, label='{0:.2f}'.format(config['fuel_frac']))
 
-    return opt_mult, poly
-
-def plot_hist(data):
-    """
-    """
-    fig = plt.figure()
-    plt.title('keff stdv')
-    plt.hist(data['stdv'])
-    plt.savefig('hist_err.png')
-
-def plot_err(data):
-    """
-    """
-
-    fig = plt.figure()
-    plt.title('keff stdv vs. fuel frac')
-    plt.xlabel('fuel frac [-]')
-    plt.ylabel('keff stdv [-]')
-    plt.ylim((0, 0.001))
-    plt.scatter(data['fuel_frac'], data['stdv'], c=data['mass'], s=6,
-                cmap=plt.cm.get_cmap('plasma', len(set(data['mass']))))
-    plt.colorbar(label='Core Mass [g]')
-
-    plt.savefig('err_v_frac.png')
+    return opt_mult, np.std(data['mass'])
 
 if __name__ == '__main__':
-    data = po.load_from_csv('./crit_results.csv')
-#    plot_hist(data)
-#    plot_err(data)
+    
+    args = sys.argv[1:]
+    matr = None
+    if len(args) == 5:
+        matr = args[4]
+    config = {'fuel' : args[1],
+              'matr' : matr,
+              'cool' : args[2],
+              'clad' : args[3],
+             }
+    
+    data = po.load_from_csv(args[0])
     fn = po.interpolate_grid(data)
-    fuel_frac('CO2', 'UO2', 'Inconel-718', None,fn)
+    fuel_frac(config, fn)
