@@ -90,8 +90,8 @@ def fuel_frac(config, func):
         resfile = open(resname, 'a')
         config['fuel_frac'] = frac
         config['ref_mult'], mstd = refl_mult(config, func)
-#        config['ref_mult'] = 0.08
-        config['ref_mult'] = 0.211337
+        config['ref_mult'] = 0.08
+#        config['ref_mult'] = 0.211337
         # get critical radius
         crit_radius(config, func)
         
@@ -103,9 +103,9 @@ def fuel_frac(config, func):
         results['radius'].append(config['core_r'])
         resfile.write('{0:.2f},{1:.5f},{2:.5f},{3:.5f}\n'.\
         format(config['fuel_frac'],config['core_r'],config['ref_mult'], mstd))
-        
+        print(frac, calc_rxtr_mass(config))
         resfile.close()
-    
+
     # report the critical radius curve
     poly = np.polyfit(results['frac'], results['radius'], 7)
     fit_fracs = np.linspace(fracs[0], fracs[-1], 1000)

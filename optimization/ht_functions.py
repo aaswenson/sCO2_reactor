@@ -179,7 +179,7 @@ class Flow:
     ################################
     # UNIT SYSTEM: m, kg, J, W, Pa #
     ################################
-    
+    const_r = 0.1
     # set some guess values
     fuel_frac = 0.75  # number of required fuel channels for given flow conditions
     core_r = 1 # guess core radius
@@ -463,4 +463,4 @@ class Flow:
                   'UO2' : {'CO2' : ( -63.9328861, 147.44434591, -122.88976054, 48.38235672)}
                  }
         
-        self.core_r = np.polyval(self.poly, self.fuel_frac)
+        self.core_r = self.const_r #np.polyval(self.poly, self.fuel_frac)
