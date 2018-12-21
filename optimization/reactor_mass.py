@@ -38,12 +38,12 @@ def reactor_mass(fuel, coolant, power, m_dot, T, P,
     return rxtr
 
 
-rxtr = reactor_mass('UO2', 'CO2', 200e3, 1.2722, (793.8,900),
+rxtr = reactor_mass('UO2', 'CO2', 50e3, 1.2722, (793.8,900),
                      (1.7906e7,1.7423e7))
-print(rxtr.fuel_frac)
 
-for r in reversed([29.47, 23.53, 19.808, 17.25, 15.33, 13.84, 12.64, 11.65, 10.81, 10.07]):   
+for r in reversed([29.47, 23.53, 19.808, 17.25, 15.33, 13.84, 12.64, 11.65,
+    10.81, 10.07]):   
     rxtr.const_r = r / 100
     # perform 1D calculation
     oned_flow_modeling(rxtr)
-    print(rxtr.core_r, rxtr.fuel_frac)
+    print(rxtr.fuel_frac)
